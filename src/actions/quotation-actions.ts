@@ -82,7 +82,7 @@ export async function createQuotationAction(formData: FormData) {
     return {
       success: true,
       data: result.data || result,
-      message: `Quotation ${quotationNumber} created successfully`,
+      message: `Quotation ${quotationNumber?.toString} created successfully`,
     };
   } catch (error) {
     console.error("Error creating quotation:", error);

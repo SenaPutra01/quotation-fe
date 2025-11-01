@@ -32,8 +32,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { getInvoiceAction } from "@/actions/invoice-actions";
+import { SendEmailDialog } from "../emails/modal";
 
 export default function InvoiceTable() {
+  const router = useRouter();
+
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -42,9 +45,10 @@ export default function InvoiceTable() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [total, setTotal] = useState<number>(0);
 
-  const router = useRouter();
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
-  const handleAddPO = () => {
+  const handleAddInvoice = () => {
     router.push("/delivery-orders/create");
   };
 
@@ -192,7 +196,12 @@ export default function InvoiceTable() {
               >
                 View Detail
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/purchase-orders`)}>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedInvoice(po);
+                  setIsEmailModalOpen(true);
+                }}
+              >
                 Send Email
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -286,15 +295,25 @@ export default function InvoiceTable() {
           pageSize={pageSize}
           totalCount={total}
           isLoading={loading}
-          onPageChange={(p) => setPage(p)}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
+          onPageChange={(p) => {
+            setPage(p);
+            fetchPurchaseOrders();
           }}
-          onAdd={handleAddPO}
+          onAdd={handleAddInvoice}
           addButtonLabel="Add Delivery Order"
         />
       )}
+
+      <SendEmailDialog
+        open={isEmailModalOpen}
+        onOpenChange={setIsEmailModalOpen}
+        type="invoice"
+        number={selectedInvoice?.invoice_number || ""}
+        defaultSubject={`Purchase Order ${
+          selectedInvoice?.invoice_number || ""
+        }`}
+        defaultMessage="Berikut lampiran Invoice Anda."
+      />
     </>
   );
 }

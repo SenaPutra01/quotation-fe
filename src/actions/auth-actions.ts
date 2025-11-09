@@ -156,7 +156,7 @@ export async function getValidToken(): Promise<string> {
       try {
         return await refreshTokenAction();
       } catch (refreshError) {
-        console.error("❌ Token refresh failed:", refreshError);
+        console.error("Token refresh failed:", refreshError);
         throw new Error("Unable to obtain valid token");
       }
     }

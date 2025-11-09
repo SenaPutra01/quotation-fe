@@ -52,11 +52,10 @@ export default function DeliveryOrderForm({
 
   const [items, setItems] = useState([
     {
-      product_id: "",
       product_name: "",
+      product_description: "",
       quantity: "",
-      notes: "",
-      description: "",
+      part_number: "",
     },
   ]);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
@@ -96,46 +95,35 @@ export default function DeliveryOrderForm({
 
   useEffect(() => {
     if (initialData) {
-      
+      setExistingReceiverSignature(null);
+      setExistingPreparedSignature(null);
+      setExistingApprovedSignature(null);
 
-      let receiverSign, preparedSign, approvedSign;
+      let receiverSign = null;
+      let preparedSign = null;
+      let approvedSign = null;
 
-      if (initialData.signatures && initialData.signatures.length >= 3) {
-        receiverSign = initialData.signatures[0];
-        preparedSign = initialData.signatures[1];
-        approvedSign = initialData.signatures[2];
-      } else if (initialData.signatures && initialData.signatures.length > 0) {
-        receiverSign = initialData.signatures.find(
-          (sig) =>
-            sig.user_name?.includes("Budi") ||
-            sig.job_position?.includes("Warehouse")
-        );
-        preparedSign = initialData.signatures.find(
-          (sig) =>
-            sig.user_name?.includes("Ahmad") ||
-            sig.job_position?.includes("Logistik")
-        );
-        approvedSign = initialData.signatures.find(
-          (sig) =>
-            sig.user_name?.includes("Siti") ||
-            sig.job_position?.includes("Manager")
-        );
+      if (initialData.signatures && initialData.signatures.length > 0) {
+        initialData.signatures.forEach((sig: any) => {
+          if (sig.signature_type === "receiver") {
+            receiverSign = sig;
+          } else if (sig.signature_type === "prepared_by") {
+            preparedSign = sig;
+          } else if (sig.signature_type === "approved_by") {
+            approvedSign = sig;
+          }
+        });
 
-        if (!receiverSign) receiverSign = initialData.signatures[0];
-        if (!preparedSign)
-          preparedSign = initialData.signatures[1] || initialData.signatures[0];
-        if (!approvedSign)
-          approvedSign =
-            initialData.signatures[2] ||
-            initialData.signatures[1] ||
-            initialData.signatures[0];
+        if (!receiverSign && initialData.signatures.length >= 1) {
+          receiverSign = initialData.signatures[0];
+        }
+        if (!preparedSign && initialData.signatures.length >= 2) {
+          preparedSign = initialData.signatures[1];
+        }
+        if (!approvedSign && initialData.signatures.length >= 3) {
+          approvedSign = initialData.signatures[2];
+        }
       }
-
-      
-        receiver: receiverSign?.user_name,
-        prepared: preparedSign?.user_name,
-        approved: approvedSign?.user_name,
-      });
 
       let purchaseOrderIdToSet = "";
 
@@ -145,63 +133,48 @@ export default function DeliveryOrderForm({
         purchaseOrderIdToSet = initialData.purchase_order_id.toString();
       }
 
-      setForm({
+      const baseForm = {
         do_number: initialData.do_number || "",
         do_date:
           initialData.do_date?.split("T")[0] ||
           new Date().toISOString().split("T")[0],
         purchase_order_id: purchaseOrderIdToSet,
         notes: initialData.notes || "",
+
         receiver_name:
-          initialData.receiver_name ||
-          receiverSign?.user_name ||
-          "Budi Santoso",
+          initialData.receiver_name || receiverSign?.user_name || "",
         receiver_position:
-          initialData.receiver_position ||
-          receiverSign?.job_position ||
-          "Warehouse Manager",
+          initialData.receiver_position || receiverSign?.job_position || "",
+
         prepared_by_name:
-          initialData.prepared_by_name || preparedSign?.user_name || "Ahmad",
+          initialData.prepared_by_name || preparedSign?.user_name || "",
         prepared_by_position:
-          initialData.prepared_by_position ||
-          preparedSign?.job_position ||
-          "Staff Logistik",
+          initialData.prepared_by_position || preparedSign?.job_position || "",
+
         approved_by_name:
-          initialData.approved_by_name || approvedSign?.user_name || "Siti",
+          initialData.approved_by_name || approvedSign?.user_name || "",
         approved_by_position:
-          initialData.approved_by_position ||
-          approvedSign?.job_position ||
-          "Manager",
-      });
+          initialData.approved_by_position || approvedSign?.job_position || "",
+      };
+
+      setForm(baseForm);
 
       const initialItems = initialData.items?.length
-        ? initialData.items.map((i: any) => {
-            const productName =
-              i.item_name ||
-              i.product_name ||
-              i.description ||
-              i.product?.name ||
-              "";
-
-            return {
-              product_id: i.product_id?.toString() || "",
-              product_name: productName,
-              quantity: i.quantity?.toString() || "",
-              notes: i.notes || "",
-              description: i.description || "",
-            };
-          })
+        ? initialData.items.map((i: any) => ({
+            product_name: i.product_name || i.description || "Product",
+            product_description: i.product_description || i.notes || "",
+            quantity: i.quantity?.toString() || "",
+            part_number: i.part_number || i.product_number || "",
+          }))
         : [
             {
-              product_id: "",
               product_name: "",
+              product_description: "",
               quantity: "",
-              notes: "",
-              description: "",
+              part_number: "",
             },
           ];
 
-      
       setItems(initialItems);
 
       const formatSignatureImage = (fileData: string) => {
@@ -220,36 +193,44 @@ export default function DeliveryOrderForm({
         }
       };
 
-      setExistingReceiverSignature(
-        formatSignatureImage(receiverSign?.file_data)
-      );
-      setExistingPreparedSignature(
-        formatSignatureImage(preparedSign?.file_data)
-      );
-      setExistingApprovedSignature(
-        formatSignatureImage(approvedSign?.file_data)
-      );
+      if (receiverSign?.file_data) {
+        setExistingReceiverSignature(
+          formatSignatureImage(receiverSign.file_data)
+        );
+      }
 
-      
-        receiver: {
-          name: receiverSign?.user_name,
-          hasData: !!receiverSign?.file_data,
-          length: receiverSign?.file_data?.length,
-          preview: existingReceiverSignature?.substring(0, 50),
-        },
-        prepared: {
-          name: preparedSign?.user_name,
-          hasData: !!preparedSign?.file_data,
-          length: preparedSign?.file_data?.length,
-          preview: existingPreparedSignature?.substring(0, 50),
-        },
-        approved: {
-          name: approvedSign?.user_name,
-          hasData: !!approvedSign?.file_data,
-          length: approvedSign?.file_data?.length,
-          preview: existingApprovedSignature?.substring(0, 50),
-        },
+      if (preparedSign?.file_data) {
+        setExistingPreparedSignature(
+          formatSignatureImage(preparedSign.file_data)
+        );
+      } else {
+        setExistingPreparedSignature(null);
+      }
+
+      if (approvedSign?.file_data) {
+        setExistingApprovedSignature(
+          formatSignatureImage(approvedSign.file_data)
+        );
+      } else {
+        setExistingApprovedSignature(null);
+      }
+    } else {
+      setForm({
+        do_number: "",
+        do_date: new Date().toISOString().split("T")[0],
+        purchase_order_id: "",
+        notes: "",
+        receiver_name: "",
+        receiver_position: "",
+        prepared_by_name: "",
+        prepared_by_position: "",
+        approved_by_name: "",
+        approved_by_position: "",
       });
+
+      setExistingReceiverSignature(null);
+      setExistingPreparedSignature(null);
+      setExistingApprovedSignature(null);
     }
   }, [initialData]);
 
@@ -278,46 +259,55 @@ export default function DeliveryOrderForm({
         purchase_order_id: purchaseOrderId,
         do_number: doNumber,
         notes: selectedPO.notes || "",
-
         receiver_name:
           form.receiver_name || selectedPO.client?.contact_person || "",
-        receiver_position: form.receiver_position || "Warehouse Manager",
+        receiver_position: form.receiver_position || "",
       }));
 
       if (selectedPO.items && selectedPO.items.length > 0) {
-        
-
         const poItems = selectedPO.items.map((item: any) => {
           const productName =
-            item.product?.name || item.product_name || item.description || "";
+            item.description ||
+            `Product ${item.product_number || item.item_number}` ||
+            "Product";
+
+          const productDescription = item.notes || "";
+
+          const partNumber =
+            item.product_number ||
+            item.part_number ||
+            `ITEM-${item.item_number}`;
 
           return {
-            product_id: item.product_id?.toString() || "",
             product_name: productName,
+            product_description: productDescription,
             quantity: item.quantity?.toString() || "1",
-            notes: item.notes || "",
-            description: item.description || "",
+            part_number: partNumber,
           };
         });
 
-        
         setItems(poItems);
+
+        toast({
+          title: "Success",
+          description: `Loaded ${poItems.length} items from Purchase Order ${selectedPO.po_number}`,
+        });
       } else {
         setItems([
           {
-            product_id: "",
             product_name: "",
+            product_description: "",
             quantity: "",
-            notes: "",
-            description: "",
+            part_number: "",
           },
         ]);
-      }
 
-      toast({
-        title: "Success",
-        description: `Purchase Order ${selectedPO.po_number} loaded successfully`,
-      });
+        toast({
+          title: "Info",
+          description: "No items found in selected Purchase Order",
+          variant: "default",
+        });
+      }
     }
   };
 
@@ -345,7 +335,10 @@ export default function DeliveryOrderForm({
 
   const handleItemChange = (index: number, field: string, value: string) => {
     const newItems = [...items];
-    newItems[index][field] = value;
+    newItems[index] = {
+      ...newItems[index],
+      [field]: value,
+    };
     setItems(newItems);
   };
 
@@ -353,11 +346,10 @@ export default function DeliveryOrderForm({
     setItems([
       ...items,
       {
-        product_id: "",
         product_name: "",
+        product_description: "",
         quantity: "",
-        notes: "",
-        description: "",
+        part_number: "",
       },
     ]);
 
@@ -369,7 +361,6 @@ export default function DeliveryOrderForm({
   ) => {
     if (e.target.files && e.target.files[0]) {
       setReceiverSignature(e.target.files[0]);
-
       setExistingReceiverSignature(null);
     }
   };
@@ -414,34 +405,78 @@ export default function DeliveryOrderForm({
       return;
     }
 
-    if (
-      items.some(
-        (item) =>
-          !item.product_name || !item.quantity || parseInt(item.quantity) <= 0
-      )
-    ) {
+    const hasEmptyFields = items.some(
+      (item) =>
+        !item.product_name.trim() ||
+        !item.quantity ||
+        parseInt(item.quantity) <= 0 ||
+        !item.part_number.trim()
+    );
+
+    if (hasEmptyFields) {
       toast({
         title: "Error",
-        description: "Please fill all required item fields with valid quantity",
+        description:
+          "Please fill all required item fields (Product Name, Quantity, and Part Number)",
         variant: "destructive",
       });
       return;
     }
 
-    if (
-      !form.receiver_name ||
-      !form.receiver_position ||
-      !form.prepared_by_name ||
-      !form.prepared_by_position ||
-      !form.approved_by_name ||
-      !form.approved_by_position
-    ) {
+    if (!form.receiver_name || !form.receiver_position) {
       toast({
         title: "Error",
-        description: "Please fill all required signature fields",
+        description: "Please fill all required receiver fields",
         variant: "destructive",
       });
       return;
+    }
+
+    if (!receiverSignature && !existingReceiverSignature) {
+      toast({
+        title: "Error",
+        description: "Receiver signature is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (mode === "edit") {
+      if (!form.prepared_by_name || !form.prepared_by_position) {
+        toast({
+          title: "Error",
+          description: "Please fill all required prepared by fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!form.approved_by_name || !form.approved_by_position) {
+        toast({
+          title: "Error",
+          description: "Please fill all required approved by fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!preparedSignature && !existingPreparedSignature) {
+        toast({
+          title: "Error",
+          description: "Prepared by signature is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!approvedSignature && !existingApprovedSignature) {
+        toast({
+          title: "Error",
+          description: "Approved by signature is required",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -468,17 +503,21 @@ export default function DeliveryOrderForm({
       formData.append("notes", form.notes || "");
       formData.append("receiver_name", form.receiver_name);
       formData.append("receiver_position", form.receiver_position);
-      formData.append("prepared_by_name", form.prepared_by_name);
-      formData.append("prepared_by_position", form.prepared_by_position);
-      formData.append("approved_by_name", form.approved_by_name);
-      formData.append("approved_by_position", form.approved_by_position);
+
+      if (mode === "edit") {
+        formData.append("prepared_by_name", form.prepared_by_name);
+        formData.append("prepared_by_position", form.prepared_by_position);
+        formData.append("approved_by_name", form.approved_by_name);
+        formData.append("approved_by_position", form.approved_by_position);
+      }
+
       formData.append("created_by", user.id.toString());
 
       const itemsData = items.map((item) => ({
-        product_id: item.product_id ? parseInt(item.product_id) : null,
         product_name: item.product_name,
+        product_description: item.product_description || "",
         quantity: parseInt(item.quantity) || 0,
-        description: item.notes || item.description || "",
+        part_number: item.part_number,
       }));
 
       formData.append("items", JSON.stringify(itemsData));
@@ -486,21 +525,13 @@ export default function DeliveryOrderForm({
       if (receiverSignature) {
         formData.append("receiver_signature", receiverSignature);
       }
-      if (preparedSignature) {
-        formData.append("prepared_signature", preparedSignature);
-      }
-      if (approvedSignature) {
-        formData.append("approved_signature", approvedSignature);
-      }
 
-      
-      for (let [key, value] of formData.entries()) {
-        if (key === "items") {
-          
-        } else if (value instanceof File) {
-          
-        } else {
-          
+      if (mode === "edit") {
+        if (preparedSignature) {
+          formData.append("prepared_signature", preparedSignature);
+        }
+        if (approvedSignature) {
+          formData.append("approved_signature", approvedSignature);
         }
       }
 
@@ -598,6 +629,9 @@ export default function DeliveryOrderForm({
                             <span className="text-sm text-muted-foreground">
                               {po.project_name} - {po.client?.company_name}
                             </span>
+                            <span className="text-xs text-muted-foreground">
+                              {po.items?.length || 0} items
+                            </span>
                           </div>
                         </SelectItem>
                       ))
@@ -612,7 +646,6 @@ export default function DeliveryOrderForm({
                 </Select>
               </div>
 
-              {/* DO Number hanya ditampilkan untuk edit mode */}
               {mode === "edit" && (
                 <div className="space-y-2">
                   <Label htmlFor="do_number">Delivery Order Number</Label>
@@ -652,78 +685,99 @@ export default function DeliveryOrderForm({
             </div>
 
             <div className="space-y-3">
-              <Label className="font-semibold">Delivery Items</Label>
+              <div className="flex justify-between items-center">
+                <Label className="font-semibold">Delivery Items</Label>
+                <span className="text-sm text-muted-foreground">
+                  {items.length} item(s)
+                </span>
+              </div>
 
-              {items.map((item, index) => {
-                const displayProductName =
-                  item.product_name || item.description || "";
-
-                return (
-                  <div key={index} className="border p-4 rounded-lg space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor={`product-${index}`}>Product</Label>
-                        <Input
-                          id={`product-${index}`}
-                          value={displayProductName}
-                          onChange={(e) =>
-                            handleItemChange(
-                              index,
-                              "product_name",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Product name"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`quantity-${index}`}>Quantity</Label>
-                        <Input
-                          id={`quantity-${index}`}
-                          type="number"
-                          placeholder="Quantity"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleItemChange(index, "quantity", e.target.value)
-                          }
-                          required
-                          min="1"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`notes-${index}`}>
-                          Notes (optional)
-                        </Label>
-                        <Input
-                          id={`notes-${index}`}
-                          placeholder="Item notes"
-                          value={item.notes}
-                          onChange={(e) =>
-                            handleItemChange(index, "notes", e.target.value)
-                          }
-                        />
-                      </div>
+              {items.map((item, index) => (
+                <div key={index} className="border p-4 rounded-lg space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`product-name-${index}`}>
+                        Product Name *
+                      </Label>
+                      <Input
+                        id={`product-name-${index}`}
+                        value={item.product_name}
+                        onChange={(e) =>
+                          handleItemChange(
+                            index,
+                            "product_name",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Enter product name"
+                        required
+                      />
                     </div>
 
-                    {items.length > 1 && (
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <IconTrash size={14} className="mr-1" /> Remove Item
-                        </Button>
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor={`part-number-${index}`}>
+                        Part Number *
+                      </Label>
+                      <Input
+                        id={`part-number-${index}`}
+                        value={item.part_number}
+                        onChange={(e) =>
+                          handleItemChange(index, "part_number", e.target.value)
+                        }
+                        placeholder="Enter part number"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`quantity-${index}`}>Quantity *</Label>
+                      <Input
+                        id={`quantity-${index}`}
+                        type="number"
+                        placeholder="Enter quantity"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          handleItemChange(index, "quantity", e.target.value)
+                        }
+                        required
+                        min="1"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`description-${index}`}>
+                        Description
+                      </Label>
+                      <Input
+                        id={`description-${index}`}
+                        placeholder="Product description"
+                        value={item.product_description}
+                        onChange={(e) =>
+                          handleItemChange(
+                            index,
+                            "product_description",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
                   </div>
-                );
-              })}
+
+                  {items.length > 1 && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <IconTrash size={14} className="mr-1" /> Remove Item
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
 
               <Button
                 variant="outline"
@@ -735,12 +789,15 @@ export default function DeliveryOrderForm({
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Receiver Section */}
+            <div
+              className={`grid gap-6 ${
+                mode === "edit" ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1"
+              }`}
+            >
               <div className="space-y-4 p-4 border rounded-lg">
                 <h3 className="font-semibold">Receiver Information</h3>
                 <div className="space-y-2">
-                  <Label htmlFor="receiver_name">Receiver Name</Label>
+                  <Label htmlFor="receiver_name">Receiver Name *</Label>
                   <Input
                     id="receiver_name"
                     name="receiver_name"
@@ -751,7 +808,7 @@ export default function DeliveryOrderForm({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="receiver_position">Receiver Position</Label>
+                  <Label htmlFor="receiver_position">Receiver Position *</Label>
                   <Input
                     id="receiver_position"
                     name="receiver_position"
@@ -763,14 +820,14 @@ export default function DeliveryOrderForm({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="receiver_signature">
-                    Receiver Signature
+                    Receiver Signature *
                     {existingReceiverSignature && (
                       <span className="text-green-600 text-xs ml-2">
-                        ✓ Image loaded
+                        Image loaded
                       </span>
                     )}
                   </Label>
-                  {existingReceiverSignature && (
+                  {existingReceiverSignature ? (
                     <div className="my-2">
                       <img
                         src={existingReceiverSignature}
@@ -782,127 +839,144 @@ export default function DeliveryOrderForm({
                         }}
                       />
                     </div>
+                  ) : (
+                    <div className="my-2 p-4 border border-dashed rounded-md text-center text-muted-foreground">
+                      No signature uploaded
+                    </div>
                   )}
                   <Input
                     id="receiver_signature"
                     type="file"
                     accept="image/*"
                     onChange={handleReceiverSignatureChange}
+                    required={!existingReceiverSignature}
                   />
                 </div>
               </div>
 
-              {/* Prepared By Section */}
-              <div className="space-y-4 p-4 border rounded-lg">
-                <h3 className="font-semibold">Prepared By</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="prepared_by_name">Name</Label>
-                  <Input
-                    id="prepared_by_name"
-                    name="prepared_by_name"
-                    value={form.prepared_by_name}
-                    onChange={handleChange}
-                    placeholder="Enter preparer name"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="prepared_by_position">Position</Label>
-                  <Input
-                    id="prepared_by_position"
-                    name="prepared_by_position"
-                    value={form.prepared_by_position}
-                    onChange={handleChange}
-                    placeholder="Enter preparer position"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="prepared_signature">
-                    Signature
-                    {existingPreparedSignature && (
-                      <span className="text-green-600 text-xs ml-2">
-                        ✓ Image loaded
-                      </span>
+              {mode === "edit" && (
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold">Prepared By</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="prepared_by_name">Name *</Label>
+                    <Input
+                      id="prepared_by_name"
+                      name="prepared_by_name"
+                      value={form.prepared_by_name}
+                      onChange={handleChange}
+                      placeholder="Enter preparer name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prepared_by_position">Position *</Label>
+                    <Input
+                      id="prepared_by_position"
+                      name="prepared_by_position"
+                      value={form.prepared_by_position}
+                      onChange={handleChange}
+                      placeholder="Enter preparer position"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prepared_signature">
+                      Signature *
+                      {existingPreparedSignature && (
+                        <span className="text-green-600 text-xs ml-2">
+                          Image loaded
+                        </span>
+                      )}
+                    </Label>
+                    {existingPreparedSignature ? (
+                      <div className="my-2">
+                        <img
+                          src={existingPreparedSignature}
+                          alt="Prepared Signature"
+                          className="h-24 border rounded-md shadow-sm"
+                          onError={(e) => {
+                            console.error("Failed to load prepared signature");
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="my-2 p-4 border border-dashed rounded-md text-center text-muted-foreground">
+                        No signature uploaded
+                      </div>
                     )}
-                  </Label>
-                  {existingPreparedSignature && (
-                    <div className="my-2">
-                      <img
-                        src={existingPreparedSignature}
-                        alt="Prepared Signature"
-                        className="h-24 border rounded-md shadow-sm"
-                        onError={(e) => {
-                          console.error("Failed to load prepared signature");
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-                  <Input
-                    id="prepared_signature"
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePreparedSignatureChange}
-                  />
+                    <Input
+                      id="prepared_signature"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePreparedSignatureChange}
+                      required={!existingPreparedSignature}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Approved By Section */}
-              <div className="space-y-4 p-4 border rounded-lg">
-                <h3 className="font-semibold">Approved By</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="approved_by_name">Name</Label>
-                  <Input
-                    id="approved_by_name"
-                    name="approved_by_name"
-                    value={form.approved_by_name}
-                    onChange={handleChange}
-                    placeholder="Enter approver name"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="approved_by_position">Position</Label>
-                  <Input
-                    id="approved_by_position"
-                    name="approved_by_position"
-                    value={form.approved_by_position}
-                    onChange={handleChange}
-                    placeholder="Enter approver position"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="approved_signature">
-                    Signature
-                    {existingApprovedSignature && (
-                      <span className="text-green-600 text-xs ml-2">
-                        ✓ Image loaded
-                      </span>
+              {mode === "edit" && (
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold">Approved By</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="approved_by_name">Name *</Label>
+                    <Input
+                      id="approved_by_name"
+                      name="approved_by_name"
+                      value={form.approved_by_name}
+                      onChange={handleChange}
+                      placeholder="Enter approver name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="approved_by_position">Position *</Label>
+                    <Input
+                      id="approved_by_position"
+                      name="approved_by_position"
+                      value={form.approved_by_position}
+                      onChange={handleChange}
+                      placeholder="Enter approver position"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="approved_signature">
+                      Signature *
+                      {existingApprovedSignature && (
+                        <span className="text-green-600 text-xs ml-2">
+                          Image loaded
+                        </span>
+                      )}
+                    </Label>
+                    {existingApprovedSignature ? (
+                      <div className="my-2">
+                        <img
+                          src={existingApprovedSignature}
+                          alt="Approved Signature"
+                          className="h-24 border rounded-md shadow-sm"
+                          onError={(e) => {
+                            console.error("Failed to load approved signature");
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="my-2 p-4 border border-dashed rounded-md text-center text-muted-foreground">
+                        No signature uploaded
+                      </div>
                     )}
-                  </Label>
-                  {existingApprovedSignature && (
-                    <div className="my-2">
-                      <img
-                        src={existingApprovedSignature}
-                        alt="Approved Signature"
-                        className="h-24 border rounded-md shadow-sm"
-                        onError={(e) => {
-                          console.error("Failed to load approved signature");
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-                  <Input
-                    id="approved_signature"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleApprovedSignatureChange}
-                  />
+                    <Input
+                      id="approved_signature"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleApprovedSignatureChange}
+                      required={!existingApprovedSignature}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex justify-end pt-4">

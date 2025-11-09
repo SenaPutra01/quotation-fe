@@ -13,7 +13,10 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { getQuotationsAction } from "@/actions/quotation-actions";
+import {
+  getQuotationsAction,
+  updateQuotationStatusAction,
+} from "@/actions/quotation-actions";
 import { Quotation } from "@/types/quotations";
 import {
   IconCircleCheckFilled,
@@ -24,7 +27,9 @@ import {
   IconLoader2,
   IconSearch,
   IconX,
-  IconPlus,
+  IconChevronDown,
+  IconSend,
+  IconLock,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -35,6 +40,49 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { SendEmailDialog } from "../emails/modal";
+import { useToast } from "@/hooks/use-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { StatusBadge } from "@/components/status-badges";
+import { TableActions } from "../table-actions";
+
+const STATUS_CONFIG = {
+  draft: {
+    label: "Draft",
+    color:
+      "text-gray-600 border-gray-200 bg-gray-50 dark:bg-gray-950 dark:border-gray-800",
+    icon: IconClock,
+    iconClass: "text-gray-400 dark:text-gray-500",
+  },
+  submit: {
+    label: "Submit",
+    color:
+      "text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800",
+    icon: IconFileCheck,
+    iconClass: "text-blue-500 dark:text-blue-400",
+  },
+  sent: {
+    label: "Sent",
+    color:
+      "text-green-600 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800",
+    icon: IconSend,
+    iconClass: "text-green-500 dark:text-green-400",
+  },
+  close: {
+    label: "Close",
+    color:
+      "text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-950 dark:border-purple-800",
+    icon: IconLock,
+    iconClass: "text-purple-500 dark:text-purple-400",
+  },
+  cancel: {
+    label: "Cancel",
+    color:
+      "text-red-600 border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800",
+    icon: IconX,
+    iconClass: "text-red-500 dark:text-red-400",
+  },
+};
 
 export default function QuotationTable() {
   const [data, setData] = useState<Quotation[]>([]);
@@ -51,6 +99,9 @@ export default function QuotationTable() {
   );
 
   const router = useRouter();
+  const { toast } = useToast();
+
+  const confirmDialog = useConfirmDialog();
 
   const handleAddQuotation = () => {
     router.push("/quotations/create");
@@ -88,44 +139,78 @@ export default function QuotationTable() {
     fetchQuotations();
   }, [statusFilter, search, page, pageSize]);
 
-  const statusColumn: ColumnDef<Quotation> = {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.original.status?.toLowerCase() || "";
-      const getStatusIcon = () => {
-        switch (status) {
-          case "accepted":
-          case "done":
-          case "approved":
-            return (
-              <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-            );
-          case "rejected":
-          case "cancelled":
-            return <IconX className="text-red-500 dark:text-red-400" />;
-          case "draft":
-            return <IconClock className="text-gray-400 dark:text-gray-500" />;
-          case "sent":
-            return (
-              <IconFileCheck className="text-blue-500 dark:text-blue-400" />
-            );
-          default:
-            return (
-              <IconLoader className="animate-spin text-muted-foreground" />
-            );
-        }
-      };
-      return (
-        <Badge
-          variant="outline"
-          className="flex items-center gap-1.5 px-2 py-0.5 text-muted-foreground capitalize"
-        >
-          {getStatusIcon()}
-          {row.original.status || "-"}
-        </Badge>
+  const handleStatusChange = async (quotationId: string, newStatus: string) => {
+    try {
+      const updatedBy = 1;
+
+      const result = await updateQuotationStatusAction(
+        quotationId,
+        newStatus,
+        updatedBy
       );
-    },
+
+      if (result.success) {
+        fetchQuotations();
+        toast({
+          title: "Status updated successfully",
+          description: `Quotation status has been changed to ${newStatus}.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Failed to update status",
+          description: result.error || "Unknown error occurred",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Failed to update status",
+        description: "An error occurred while updating status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelQuotation = async (quotation: Quotation) => {
+    const confirmed = await confirmDialog.confirm({
+      title: "Cancel Quotation",
+      description: `Are you sure you want to cancel quotation ${quotation.quotation_number}? This action cannot be undone.`,
+      confirmText: "Yes, Cancel Quotation",
+      variant: "destructive",
+      onConfirm: async () => {
+        await handleStatusChange(quotation.id, "cancel");
+        confirmDialog.closeDialog();
+      },
+      onCancel: () => {
+        confirmDialog.closeDialog();
+      },
+    });
+  };
+
+  const handleDeleteQuotation = async (quotation: Quotation) => {
+    const confirmed = await confirmDialog.confirm({
+      title: "Delete Quotation",
+      description: `Are you sure you want to delete quotation ${quotation.quotation_number}? This action cannot be undone and all data will be permanently removed.`,
+      confirmText: "Yes, Delete Quotation",
+      variant: "destructive",
+      onConfirm: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        toast({
+          title: "Quotation deleted",
+          description: `Quotation ${quotation.quotation_number} has been deleted.`,
+          variant: "default",
+        });
+
+        fetchQuotations();
+        confirmDialog.closeDialog();
+      },
+      onCancel: () => {
+        confirmDialog.closeDialog();
+      },
+    });
   };
 
   const columns: ColumnDef<Quotation>[] = [
@@ -170,62 +255,44 @@ export default function QuotationTable() {
         <span>{new Date(row.original.valid_until).toLocaleDateString()}</span>
       ),
     },
-    statusColumn,
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.status || "draft"} />
+      ),
+    },
     {
       id: "actions",
       cell: ({ row }) => {
         const quotation = row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-                size="icon"
-              >
-                <IconDotsVertical />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36">
-              <DropdownMenuItem
-                onClick={() => router.push(`/quotations/${quotation.id}/edit`)}
-              >
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => router.push(`/quotations/${quotation.id}`)}
-              >
-                View Detail
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedQuotation(quotation);
-                  setIsEmailModalOpen(true);
-                }}
-              >
-                Send Email
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => {
-                  if (
-                    confirm(`Delete quotation ${quotation.quotation_number}?`)
-                  ) {
-                    alert("Delete function belum diimplementasi");
-                  }
-                }}
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TableActions
+            item={quotation}
+            basePath="/quotations"
+            onCancel={handleCancelQuotation}
+            onDelete={handleDeleteQuotation}
+            onSendEmail={(quotation) => {
+              setSelectedQuotation(quotation);
+              setIsEmailModalOpen(true);
+            }}
+          />
         );
       },
     },
   ];
+
+  const handleEmailSuccess = () => {
+    toast({
+      title: "Email sent successfully",
+      description: `Quotation ${selectedQuotation?.quotation_number} has been sent via email.`,
+      variant: "default",
+    });
+
+    setSelectedQuotation(null);
+    fetchQuotations();
+  };
 
   return (
     <>
@@ -265,12 +332,14 @@ export default function QuotationTable() {
               <SelectValue placeholder="Filter by Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="sent">Sent</SelectItem>
-              <SelectItem value="accepted">Accepted</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
+              {(
+                Object.keys(STATUS_CONFIG) as Array<keyof typeof STATUS_CONFIG>
+              ).map((status) => (
+                <SelectItem key={status} value={status}>
+                  {STATUS_CONFIG[status].label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button
@@ -299,10 +368,9 @@ export default function QuotationTable() {
           pageSize={pageSize}
           totalCount={total}
           isLoading={loading}
-          onPageChange={(p) => setPage(p)}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
+          onPageChange={(p) => {
+            setPage(p);
+            fetchQuotations();
           }}
           onAdd={handleAddQuotation}
           addButtonLabel="Add Quotation"
@@ -318,9 +386,20 @@ export default function QuotationTable() {
           selectedQuotation?.quotation_number || ""
         }`}
         defaultMessage="Berikut lampiran quotation Anda."
-        onSuccess={() => {
-          setSelectedQuotation(null);
-        }}
+        onSuccess={handleEmailSuccess}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.isOpen}
+        onOpenChange={confirmDialog.closeDialog}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        variant={confirmDialog.variant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.onConfirm!}
+        onCancel={confirmDialog.onCancel}
       />
     </>
   );

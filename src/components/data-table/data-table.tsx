@@ -158,7 +158,6 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {/* Tabs */}
       {tabs && tabs.length > 0 && (
         <div className="border-b">
           <div className="flex space-x-8">
@@ -184,7 +183,6 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      {/* Search + Add + Columns */}
       <div className="flex flex-col sm:flex-row items-center gap-4">
         {searchColumn && (
           <div className="flex-1 w-full sm:w-auto">
@@ -234,7 +232,6 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {/* Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -300,7 +297,6 @@ export function DataTable<TData, TValue>({
           </div>
 
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1">
-            {/* Previous button */}
             <Button
               variant="ghost"
               size="icon"
@@ -310,7 +306,6 @@ export function DataTable<TData, TValue>({
               <IconChevronLeft />
             </Button>
 
-            {/* Dynamic Page Numbers */}
             {(() => {
               const visiblePages: number[] = [];
               const maxVisible = 5;
@@ -364,7 +359,6 @@ export function DataTable<TData, TValue>({
               );
             })()}
 
-            {/* Next button */}
             <Button
               variant="ghost"
               size="icon"

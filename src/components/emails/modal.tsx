@@ -57,12 +57,10 @@ export function SendEmailDialog({
         number,
       });
 
-      alert(`${type} email untuk ${number} berhasil dikirim ke ${form.to}`);
       onOpenChange(false);
       onSuccess?.();
     } catch (err) {
       console.error("Error sending email:", err);
-      alert("Gagal mengirim email, cek console untuk detailnya.");
     } finally {
       setSending(false);
     }

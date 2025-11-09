@@ -2,6 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { serverApiService } from "@/services/server-api-service";
+import { AnyCnameRecord } from "node:dns";
 
 export async function getProductsAction() {
   try {
@@ -23,13 +24,13 @@ export async function getProductsAction() {
   }
 }
 
-export async function getClientDetailAction(clientId: string) {
+export async function getProductDetailAction(productId: string) {
   try {
-    const result = await serverApiService.getClientDetail(clientId);
+    const result = await serverApiService.getProductDetail(productId);
 
     return {
       success: true,
-      data: result.data || result.client,
+      data: result.data || result.product,
     };
   } catch (error) {
     console.error("Error fetching client detail:", error);
@@ -43,42 +44,44 @@ export async function getClientDetailAction(clientId: string) {
   }
 }
 
-export async function createClientAction(formData: FormData) {
+export async function createProductAction(data: any) {
   try {
-    const result = await serverApiService.createClient(formData);
-    revalidateTag("clients");
+    const result = await serverApiService.createProduct(data);
 
-    const clientName = formData.get("name");
+    revalidateTag("products");
+
+    const productName = data.name || "New Product";
 
     return {
       success: true,
-      data: result.data || result,
-      message: `Client ${clientName} created successfully`,
+      data: result?.data || result,
+      message: `Product ${productName} created successfully`,
     };
-  } catch (error) {
-    console.error("Error creating client:", error);
+  } catch (error: any) {
+    console.error("Error creating product:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to create client",
+      message: error?.message || "Failed to create product",
     };
   }
 }
 
-export async function updateClientAction(clientId: string, formData: FormData) {
+export async function updateProductAction(clientId: string, data: any) {
   try {
-    const result = await serverApiService.updateClient(clientId, formData);
-    revalidateTag("clients");
+    const result = await serverApiService.updateProduct(clientId, data);
+    revalidateTag("products");
 
     return {
       success: true,
       data: result.data || result,
-      message: "Client updated successfully",
+      message: "Product updated successfully",
     };
   } catch (error) {
     console.error("Error updating client:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to update client",
+      error:
+        error instanceof Error ? error.message : "Failed to update product",
     };
   }
 }

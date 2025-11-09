@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,23 +10,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { getClientsAction } from "@/actions/client-actions";
 import { useToast } from "@/hooks/use-toast";
 import {
+  createQuotationAction,
+  updateQuotationAction,
+} from "@/actions/quotation-actions";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  IconPlus,
-  IconTrash,
-  IconLoader,
-  IconArrowLeft,
-} from "@tabler/icons-react";
-import { getProductsAction } from "@/actions/product-actions";
-import {
-  createQuotationAction,
-  updateQuotationAction,
-} from "@/actions/quotation-actions";
+
+const IconLoader = ({ className }: { className?: string }) => (
+  <div className={className}>⟳</div>
+);
+const IconArrowLeft = () => <span>←</span>;
+const IconTrash = () => <span>🗑</span>;
+const IconPlus = () => <span>+</span>;
 
 export default function QuotationForm({
   initialData = null,
@@ -51,35 +51,24 @@ export default function QuotationForm({
     signature_title: "",
   });
 
+  const [clients, setClients] = useState<any[]>([]);
+  const [clientsLoaded, setClientsLoaded] = useState(false);
   const [items, setItems] = useState([
-    { productId: "", quantity: "", notes: "" },
+    { description: "", quantity: "", unit_price: "", notes: "" },
   ]);
   const [terms, setTerms] = useState([""]);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
   const [signatureImage, setSignatureImage] = useState<File | null>(null);
   const [existingSignature, setExistingSignature] = useState<string | null>(
     null
   );
-  const [clients, setClients] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [clientsLoaded, setClientsLoaded] = useState(false);
-  const [productsLoaded, setProductsLoaded] = useState(false);
-
-  const initialClientData = useRef<any>(null);
 
   useEffect(() => {
     const fetchClients = async () => {
       try {
         const res = await getClientsAction();
-        if (res.success && Array.isArray(res.data)) {
-          setClients(res.data);
-        } else {
-          setClients([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch clients:", err);
+        setClients(res.success ? res.data : []);
+      } catch {
         setClients([]);
       } finally {
         setClientsLoaded(true);
@@ -89,38 +78,11 @@ export default function QuotationForm({
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await getProductsAction();
-        if (res.success && Array.isArray(res.data)) {
-          setProducts(res.data);
-        } else {
-          setProducts([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch products:", err);
-        setProducts([]);
-      } finally {
-        setProductsLoaded(true);
-      }
-    };
-    fetchProducts();
-  }, []);
-
-  useEffect(() => {
     if (initialData) {
-      
-
       const signature =
         initialData.signatures && initialData.signatures.length > 0
           ? initialData.signatures[0]
           : null;
-
-      const attachmentList = initialData.attachments || [];
-
-      if (initialData.client) {
-        initialClientData.current = initialData.client;
-      }
 
       setForm({
         project_name: initialData.project_name || "",
@@ -133,29 +95,21 @@ export default function QuotationForm({
         signature_title: signature?.job_position || "",
       });
 
-      const initialItems = initialData.items?.length
-        ? initialData.items.map((i: any) => ({
-            productId: i.product_id?.toString() || "",
-            quantity: i.quantity?.toString() || "",
-            notes: i.notes || "",
-          }))
-        : [{ productId: "", quantity: "", notes: "" }];
-
-      
-      setItems(initialItems);
+      setItems(
+        initialData.items?.length
+          ? initialData.items.map((i: any) => ({
+              description: i.description || "",
+              quantity: i.quantity?.toString() || "",
+              unit_price: i.unit_price?.toString() || "",
+              notes: i.notes || "",
+            }))
+          : [{ description: "", quantity: "", unit_price: "", notes: "" }]
+      );
 
       setTerms(
         initialData.terms?.length
           ? initialData.terms.map((t: any) => t.description || "")
           : [""]
-      );
-
-      setExistingAttachments(
-        attachmentList.map((att: any) => ({
-          file_name: att.file_name,
-          file_data: att.file_data,
-          file_type: att.file_type,
-        }))
       );
 
       if (signature?.file_data) {
@@ -182,149 +136,30 @@ export default function QuotationForm({
     setItems(newItems);
   };
 
+  const addItem = () =>
+    setItems([
+      ...items,
+      { description: "", quantity: "", unit_price: "", notes: "" },
+    ]);
+  const removeItem = (index: number) =>
+    setItems(items.filter((_, i) => i !== index));
+
   const handleTermChange = (index: number, value: string) => {
     const newTerms = [...terms];
     newTerms[index] = value;
     setTerms(newTerms);
   };
-
-  const addItem = () =>
-    setItems([...items, { productId: "", quantity: "", notes: "" }]);
-  const removeItem = (index: number) =>
-    setItems(items.filter((_, i) => i !== index));
-
   const addTerm = () => setTerms([...terms, ""]);
   const removeTerm = (index: number) =>
     setTerms(terms.filter((_, i) => i !== index));
-
-  const handleAttachmentsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setAttachments(Array.from(e.target.files));
-  };
 
   const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0])
       setSignatureImage(e.target.files[0]);
   };
 
-  const getSelectedClientDisplay = () => {
-    if (!form.client_id) return "Select Client";
-
-    
-      client_id: form.client_id,
-      clients_length: clients.length,
-      clients_loaded: clientsLoaded,
-      initial_client: initialClientData.current,
-    });
-
-    const selectedClient = clients.find(
-      (client) => client.id === form.client_id
-    );
-    if (selectedClient) {
-      
-      return `${selectedClient.company_name} (${selectedClient.contact_person})`;
-    }
-
-    if (
-      initialClientData.current &&
-      initialClientData.current.id === form.client_id
-    ) {
-      
-        "🔄 Using initial client data:",
-        initialClientData.current.company_name
-      );
-      return `${initialClientData.current.company_name} (${initialClientData.current.contact_person})`;
-    }
-
-    
-    return `${form.company_name} (${form.contact_person})`;
-  };
-
-  const getSelectedProductDisplay = (productId: string) => {
-    if (!productId) return "Select Product";
-
-    const productIdNum = parseInt(productId);
-
-    const selectedProduct = products.find(
-      (product) => product.id === productIdNum
-    );
-    if (selectedProduct) {
-      return `${selectedProduct.product_number} - ${selectedProduct.name}`;
-    }
-
-    if (mode === "edit" && initialData?.items) {
-      const initialItem = initialData.items.find((item: any) => {
-        const itemProductIdNum = parseInt(item.product_id);
-        return itemProductIdNum === productIdNum;
-      });
-
-      if (initialItem?.product) {
-        return `${initialItem.product.product_number} - ${initialItem.product.name}`;
-      }
-
-      if (
-        initialItem &&
-        (initialItem.product_number || initialItem.product_name)
-      ) {
-        return `${initialItem.product_number} - ${initialItem.product_name}`;
-      }
-    }
-
-    return "Select Product";
-  };
-
-  const getProductDetails = (productId: string) => {
-    if (!productId) return null;
-
-    const productIdNum = parseInt(productId);
-
-    const productFromList = products.find(
-      (product) => product.id === productIdNum
-    );
-    if (productFromList) return productFromList;
-
-    if (mode === "edit" && initialData?.items) {
-      const initialItem = initialData.items.find((item: any) => {
-        const itemProductIdNum = parseInt(item.product_id);
-        return itemProductIdNum === productIdNum;
-      });
-
-      if (initialItem?.product) {
-        return initialItem.product;
-      }
-
-      if (
-        initialItem &&
-        (initialItem.product_number || initialItem.product_name)
-      ) {
-        return {
-          id: initialItem.product_id,
-          product_number: initialItem.product_number,
-          name: initialItem.product_name,
-          description:
-            initialItem.product_description || initialItem.description || "",
-          unit_price: initialItem.unit_price || "0",
-          category: initialItem.category || "",
-        };
-      }
-    }
-
-    return null;
-  };
-
-  const isDataLoaded = clientsLoaded && productsLoaded;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!isDataLoaded && mode === "edit") {
-      toast({
-        title: "Loading",
-        description: "Please wait while data is loading...",
-        variant: "default",
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -340,21 +175,24 @@ export default function QuotationForm({
       }
 
       const formData = new FormData();
-      Object.entries(form).forEach(([key, value]) =>
-        formData.append(key, value.toString())
+      Object.entries(form).forEach(([k, v]) =>
+        formData.append(k, v.toString())
       );
       formData.append("created_by", user.id.toString());
       formData.append("items", JSON.stringify(items));
       formData.append("terms", JSON.stringify(terms));
-      attachments.forEach((f) => formData.append("attachments", f));
+
       if (signatureImage) formData.append("signature_image", signatureImage);
 
-      let response;
-      if (mode === "edit" && quotationId) {
-        response = await updateQuotationAction(quotationId, formData);
-      } else {
-        response = await createQuotationAction(formData);
+      if (mode === "edit") {
+        formData.append("status", "submit");
+        formData.append("updated_by", user.id.toString());
       }
+
+      let response;
+      if (mode === "edit" && quotationId)
+        response = await updateQuotationAction(quotationId, formData);
+      else response = await createQuotationAction(formData);
 
       if (response?.success) {
         toast({
@@ -385,17 +223,6 @@ export default function QuotationForm({
     }
   };
 
-  if (!isDataLoaded && mode === "edit") {
-    return (
-      <div className="flex justify-center items-center min-h-64">
-        <div className="flex flex-col items-center gap-4">
-          <IconLoader className="animate-spin" size={32} />
-          <p>Loading quotation data...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-4 my-6">
       <div className="mb-4 flex justify-between">
@@ -404,30 +231,28 @@ export default function QuotationForm({
           size="sm"
           onClick={() => router.push("/quotations")}
         >
-          <IconArrowLeft size={16} className="mr-1" /> Back to Quotations
+          <IconArrowLeft /> Back to Quotations
         </Button>
       </div>
 
       <Card className="border-0 shadow-none">
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* ================= Project & Client ================= */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="project_name">Project Name</Label>
+              <div>
+                <Label>Project Name</Label>
                 <Input
-                  id="project_name"
+                  className="mt-1.5"
                   name="project_name"
                   value={form.project_name}
                   onChange={handleChange}
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="request_date">Request Date</Label>
+              <div>
+                <Label>Request Date</Label>
                 <Input
-                  id="request_date"
+                  className="mt-1.5"
                   type="date"
                   name="request_date"
                   value={form.request_date}
@@ -435,11 +260,10 @@ export default function QuotationForm({
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="valid_days">Valid Days</Label>
+              <div>
+                <Label>Valid Days</Label>
                 <Input
-                  id="valid_days"
+                  className="mt-1.5"
                   type="number"
                   name="valid_days"
                   value={form.valid_days}
@@ -448,251 +272,153 @@ export default function QuotationForm({
                 />
               </div>
 
-              {/* Client Select - FIXED */}
-              <div className="space-y-2">
-                <Label htmlFor="client_select">Client</Label>
-                <Select
-                  value={form.client_id ? form.client_id.toString() : ""}
-                  onValueChange={(value) => {
-                    const selectedClient = clients.find(
-                      (client) => client.id === Number(value)
-                    );
-                    setForm({
-                      ...form,
-                      client_id: Number(value),
-                      company_name: selectedClient?.company_name || "",
-                      contact_person: selectedClient?.contact_person || "",
-                    });
-                  }}
-                >
-                  <SelectTrigger id="client_select" className="w-full">
-                    <SelectValue>{getSelectedClientDisplay()}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.length > 0 ? (
-                      clients.map((client) => (
-                        <SelectItem
-                          key={client.id}
-                          value={client.id.toString()}
-                        >
-                          {client.company_name} ({client.contact_person})
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="p-2 text-sm text-muted-foreground">
-                        {clientsLoaded
-                          ? "No clients available"
-                          : "Loading clients..."}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
+              <div>
+                <Label>Client</Label>
+                {clientsLoaded ? (
+                  <Select
+                    value={form.client_id ? String(form.client_id) : ""}
+                    onValueChange={(value) => {
+                      const selected = clients.find(
+                        (c) => c.id === Number(value)
+                      );
+                      setForm({
+                        ...form,
+                        client_id: Number(value),
+                        company_name: selected?.company_name || "",
+                        contact_person: selected?.contact_person || "",
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="w-full mt-1.5">
+                      <SelectValue placeholder="Select Client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.length > 0 ? (
+                        clients.map((client) => (
+                          <SelectItem key={client.id} value={String(client.id)}>
+                            {client.company_name} ({client.contact_person})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          No clients available
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="p-2 text-sm text-muted-foreground">
+                    Loading...
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* ================= Products ================= */}
             <div className="space-y-3">
-              <Label className="font-semibold">Products</Label>
-
-              {!productsLoaded && mode === "edit" && (
-                <div className="p-4 text-center text-muted-foreground">
-                  Loading products...
-                </div>
-              )}
-
-              {items.map((item, index) => {
-                const selectedProduct = getProductDetails(item.productId);
-
-                return (
-                  <div key={index} className="border p-4 rounded-lg space-y-4">
-                    {/* Product Selection */}
-                    <div className="space-y-2">
-                      <Label>Product {index + 1}</Label>
-                      <Select
-                        value={item.productId}
-                        onValueChange={(value) =>
-                          handleItemChange(index, "productId", value)
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue>
-                            {getSelectedProductDisplay(item.productId)}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.length > 0 ? (
-                            products.map((product) => (
-                              <SelectItem
-                                key={product.id}
-                                value={product.id.toString()}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-medium">
-                                    {product.product_number} - {product.name}
-                                  </span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {product.category} - Rp{" "}
-                                    {parseFloat(
-                                      product.unit_price
-                                    ).toLocaleString("id-ID")}
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <div className="p-2 text-sm text-muted-foreground">
-                              {productsLoaded
-                                ? "No products available"
-                                : "Loading products..."}
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Product Details & Quantity */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Product Details */}
-                      <div className="space-y-2">
-                        <Label>Product Details</Label>
-                        {selectedProduct ? (
-                          <div className="p-3 bg-muted/50 rounded-md text-sm">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <span className="font-medium">Number:</span>
-                                <p>{selectedProduct.product_number}</p>
-                              </div>
-                              <div>
-                                <span className="font-medium">Category:</span>
-                                <p>{selectedProduct.category}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <span className="font-medium">
-                                  Description:
-                                </span>
-                                <p className="mt-1">
-                                  {selectedProduct.description}
-                                </p>
-                              </div>
-                              <div className="col-span-2">
-                                <span className="font-medium">Unit Price:</span>
-                                <p className="text-green-600 font-semibold">
-                                  Rp{" "}
-                                  {parseFloat(
-                                    selectedProduct.unit_price
-                                  ).toLocaleString("id-ID")}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-3 bg-muted/50 rounded-md text-sm text-muted-foreground text-center">
-                            {item.productId ? (
-                              <div>
-                                <p>Product not found in system</p>
-                                <p className="text-xs mt-1">
-                                  ID: {item.productId}
-                                </p>
-                              </div>
-                            ) : (
-                              <p>Select a product to view details</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Quantity & Notes */}
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor={`quantity-${index}`}>Quantity</Label>
-                          <Input
-                            id={`quantity-${index}`}
-                            type="number"
-                            placeholder="Quantity"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              handleItemChange(
-                                index,
-                                "quantity",
-                                e.target.value
-                              )
-                            }
-                            required
-                            min="1"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`notes-${index}`}>
-                            Notes (optional)
-                          </Label>
-                          <Textarea
-                            id={`notes-${index}`}
-                            placeholder="Additional notes for this product"
-                            value={item.notes}
-                            onChange={(e) =>
-                              handleItemChange(index, "notes", e.target.value)
-                            }
-                          />
-                        </div>
-
-                        {/* Total Price Calculation */}
-                        {selectedProduct &&
-                          item.quantity &&
-                          parseInt(item.quantity) > 0 && (
-                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                              <div className="flex justify-between items-center">
-                                <span className="font-medium">
-                                  Total Price:
-                                </span>
-                                <span className="text-blue-700 font-bold text-lg">
-                                  Rp{" "}
-                                  {(
-                                    parseFloat(selectedProduct.unit_price) *
-                                    parseInt(item.quantity)
-                                  ).toLocaleString("id-ID")}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                      </div>
-                    </div>
-
-                    {/* Remove Button */}
-                    {items.length > 1 && (
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <IconTrash size={14} className="mr-1" /> Remove
-                          Product
-                        </Button>
-                      </div>
-                    )}
+              <Label className="font-semibold">Products / Items</Label>
+              {items.map((item, index) => (
+                <div key={index} className="border p-4 rounded-lg space-y-4">
+                  <div>
+                    <Label>Description</Label>
+                    <Input
+                      className="mt-1.5"
+                      placeholder="Item description"
+                      value={item.description}
+                      onChange={(e) =>
+                        handleItemChange(index, "description", e.target.value)
+                      }
+                      required
+                    />
                   </div>
-                );
-              })}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Quantity</Label>
+                      <Input
+                        className="mt-1.5"
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          handleItemChange(index, "quantity", e.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Unit Price (Rp)</Label>
+                      <Input
+                        className="mt-1.5"
+                        type="number"
+                        min="0"
+                        value={item.unit_price}
+                        onChange={(e) =>
+                          handleItemChange(index, "unit_price", e.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Notes</Label>
+                    <Textarea
+                      className="mt-1.5"
+                      placeholder="Optional notes"
+                      value={item.notes}
+                      onChange={(e) =>
+                        handleItemChange(index, "notes", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {item.quantity && item.unit_price && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">Total Price:</span>
+                        <span className="text-blue-700 font-bold text-lg">
+                          Rp{" "}
+                          {(
+                            parseFloat(item.unit_price) *
+                            parseInt(item.quantity)
+                          ).toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {items.length > 1 && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <IconTrash /> Remove Item
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
 
               <Button
                 variant="outline"
                 size="sm"
                 type="button"
                 onClick={addItem}
-                disabled={!productsLoaded}
               >
-                <IconPlus size={14} className="mr-1" /> Add Product
+                <IconPlus /> Add Item
               </Button>
             </div>
-            {/*             ================= Terms ================= */}
+
             <div className="space-y-3">
               <Label className="font-semibold">Terms</Label>
               {terms.map((term, index) => (
                 <div key={index} className="flex gap-2">
                   <Input
+                    className="mt-1.5"
                     placeholder="Term text"
                     value={term}
                     onChange={(e) => handleTermChange(index, e.target.value)}
@@ -705,7 +431,7 @@ export default function QuotationForm({
                       type="button"
                       onClick={() => removeTerm(index)}
                     >
-                      <IconTrash size={14} />
+                      <IconTrash />
                     </Button>
                   )}
                 </div>
@@ -716,94 +442,59 @@ export default function QuotationForm({
                 type="button"
                 onClick={addTerm}
               >
-                <IconPlus size={14} className="mr-1" /> Add Term
+                <IconPlus /> Add Term
               </Button>
             </div>
 
-            {/* ================= Signature ================= */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="signature_name">Signature Name</Label>
-                <Input
-                  id="signature_name"
-                  name="signature_name"
-                  value={form.signature_name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signature_title">Signature Title</Label>
-                <Input
-                  id="signature_title"
-                  name="signature_title"
-                  value={form.signature_title}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
+            {mode === "edit" && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label>Signature Name</Label>
+                    <Input
+                      className="mt-1.5"
+                      name="signature_name"
+                      value={form.signature_name}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Signature Title</Label>
+                    <Input
+                      className="mt-1.5"
+                      name="signature_title"
+                      value={form.signature_title}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
 
-            {/* ================= Attachments ================= */}
-            <div className="space-y-2">
-              <Label htmlFor="attachments">Attachments</Label>
-              {existingAttachments.length > 0 && (
-                <ul className="text-sm text-gray-600 ml-4 list-disc">
-                  {existingAttachments.map((file, i) => (
-                    <li key={i}>
-                      <span>{file.file_name}</span>
-                      {file.file_data && (
-                        <a
-                          href={`data:${file.file_type};base64,${Buffer.from(
-                            file.file_data.replace(/^\\x/, ""),
-                            "hex"
-                          ).toString("base64")}`}
-                          download={file.file_name}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 ml-2 hover:underline"
-                        >
-                          View
-                        </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Input
-                id="attachments"
-                type="file"
-                multiple
-                onChange={handleAttachmentsChange}
-              />
-            </div>
-
-            {/* ================= Signature Image ================= */}
-            <div className="space-y-2">
-              <Label htmlFor="signature_image">Signature Image</Label>
-              {existingSignature && (
-                <div className="my-2">
-                  <img
-                    src={existingSignature}
-                    alt="Signature"
-                    className="h-24 border rounded-md shadow-sm"
+                <div className="space-y-2">
+                  <Label>Signature Image</Label>
+                  {existingSignature && (
+                    <img
+                      src={existingSignature}
+                      alt="Signature"
+                      className="h-24 border rounded-md shadow-sm"
+                    />
+                  )}
+                  <Input
+                    className="mt-1.5"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSignatureChange}
                   />
                 </div>
-              )}
-              <Input
-                id="signature_image"
-                type="file"
-                accept="image/*"
-                onChange={handleSignatureChange}
-              />
-            </div>
+              </>
+            )}
 
-            {/* ================= Submit ================= */}
             <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={loading || !isDataLoaded}>
+              <Button type="submit" disabled={loading}>
                 {loading ? (
                   <>
-                    <IconLoader className="animate-spin mr-2" size={16} />{" "}
+                    <IconLoader className="animate-spin mr-2" />{" "}
                     {mode === "edit" ? "Updating..." : "Creating..."}
                   </>
                 ) : mode === "edit" ? (

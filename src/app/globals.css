@@ -132,12 +132,10 @@ html {
   overflow-x: hidden;
 }
 
-/* Ensure all containers don't cause overflow */
 .container {
   max-width: 100%;
 }
 
-/* Fix for charts and other components */
 .recharts-wrapper {
   max-width: 100%;
 }

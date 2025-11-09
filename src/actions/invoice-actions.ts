@@ -32,9 +32,9 @@ export async function getInvoiceAction(filters?: Record<string, any>) {
   }
 }
 
-export async function getPurchaseOrderDetailAction(quotationId: string) {
+export async function getInvoiceDetailAction(quotationId: string) {
   try {
-    const result = await serverApiService.getPurchaseOrderDetail(quotationId);
+    const result = await serverApiService.getInvoiceDetail(quotationId);
 
     return {
       success: true,
@@ -52,17 +52,17 @@ export async function getPurchaseOrderDetailAction(quotationId: string) {
   }
 }
 
-export async function createPurchaseOrderAction(formData: FormData) {
+export async function createInvoiceAction(formData: FormData) {
   try {
-    const result = await serverApiService.createPurchaseOrder(formData);
-    revalidateTag("purchaseOrders");
+    const result = await serverApiService.createInvoice(formData);
+    revalidateTag("invoice");
 
-    const quotationNumber = formData.get("quotation_number");
+    const invoiceNumber = formData.get("invoice_number");
 
     return {
       success: true,
       data: result.data || result,
-      message: `Quotation ${quotationNumber?.toString} created successfully`,
+      message: `Invoice ${invoiceNumber?.toString} created successfully`,
     };
   } catch (error) {
     console.error("Error creating quotation:", error);
@@ -74,49 +74,60 @@ export async function createPurchaseOrderAction(formData: FormData) {
   }
 }
 
-export async function updatePurchaseOrderAction(
+export async function updateInvoiceAction(
   purchaseOrderId: string,
   formData: FormData
 ) {
   try {
-    const result = await serverApiService.updatePurchaseOrder(
+    const result = await serverApiService.updateInvoice(
       purchaseOrderId,
       formData
     );
-    revalidateTag("purchase-orders");
+    revalidateTag("invoice");
 
     return {
       success: true,
       data: result.data || result,
-      message: "Purchase Order updated successfully",
+      message: "Invoice updated successfully",
     };
   } catch (error) {
-    console.error("Error updating purchase order:", error);
+    console.error("Error updating Invoice:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update invoice",
+    };
+  }
+}
+
+export async function updateInvoiceStatusAction(
+  invoiceId: string,
+  status: string,
+  updatedBy: number
+) {
+  try {
+    const result = await serverApiService.updateInvoiceStatus(
+      invoiceId,
+      status,
+      updatedBy
+    );
+
+    revalidateTag("purchase-orders");
+    revalidateTag(`purchase order - ${invoiceId}`);
+
+    return {
+      success: true,
+      data: result.data || result,
+      message: `Purchase Order status updated to ${status} successfully`,
+    };
+  } catch (error) {
+    console.error("Error updating quotation status:", error);
     return {
       success: false,
       error:
         error instanceof Error
           ? error.message
-          : "Failed to update purchase order",
-    };
-  }
-}
-
-export async function deleteQuotationAction(quotationId: string) {
-  try {
-    await serverApiService.deleteQuotation(quotationId);
-    revalidateTag("quotations");
-
-    return {
-      success: true,
-      message: "Quotation deleted successfully",
-    };
-  } catch (error) {
-    console.error("Error deleting quotation:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to delete quotation",
+          : "Failed to update quotation status",
     };
   }
 }

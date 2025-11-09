@@ -28,7 +28,7 @@ class TokenRefreshService {
             try {
               await refreshTokenAction();
             } catch (error) {
-              console.error("❌ Background token refresh failed:", error);
+              console.error("Background token refresh failed:", error);
             } finally {
               this.isRefreshing = false;
             }

@@ -1,4 +1,5 @@
 import { getValidToken, refreshTokenAction } from "@/actions/auth-actions";
+import { checkAndRefresh } from "@/actions/token-actions";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 class ServerApiService {
@@ -10,6 +11,7 @@ class ServerApiService {
     const maxRetries = 1;
 
     try {
+      await checkAndRefresh();
       const token = await getValidToken();
 
       const isFormData = options.body instanceof FormData;
@@ -40,9 +42,7 @@ class ServerApiService {
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
-        } catch {
-          // bisa jadi response kosong / non-JSON
-        }
+        } catch {}
         throw new Error(errorMessage);
       }
 
@@ -63,7 +63,6 @@ class ServerApiService {
     }
   }
 
-  // User Management
   async getRoles() {
     return this.makeRequestWithAuthRetry("/roles");
   }
@@ -105,16 +104,36 @@ class ServerApiService {
     return this.makeRequestWithAuthRetry(`/users/${userId}`, { method: "GET" });
   }
 
-  // Client Management
-  async getClients() {
+  async getClients(filters: Record<string, any> = {}) {
+    const body = {
+      page: filters.page || 1,
+      limit: filters.limit || 10,
+      search: filters.search || null,
+      company_name: filters.company_name || null,
+      contact_person: filters.contact_person || null,
+      sortBy: filters.sortBy || "c.created_at",
+      sortOrder: filters.sortOrder || "DESC",
+    };
+
     const res = await this.makeRequestWithAuthRetry("/clients", {
-      method: "GET",
+      method: "POST",
+      body: JSON.stringify(body),
     });
+
+    const responseData = res.data || {};
 
     return {
       success: res.success ?? true,
-      data: res.data?.data || [],
-      total: res.data?.total || 0,
+      data: responseData.data || [],
+      meta: {
+        page: responseData.pagination?.page || body.page,
+        limit: responseData.pagination?.limit || body.limit,
+        total: responseData.pagination?.total || 0,
+        totalPages: responseData.pagination?.totalPages || 1,
+        hasNextPage: responseData.pagination?.hasNextPage || false,
+        hasPrevPage: responseData.pagination?.hasPrevPage || false,
+        filters: responseData.filters || {},
+      },
     };
   }
 
@@ -144,7 +163,6 @@ class ServerApiService {
     });
   }
 
-  // Product Management
   async getProducts() {
     const res = await this.makeRequestWithAuthRetry("/products", {
       method: "GET",
@@ -163,17 +181,17 @@ class ServerApiService {
     });
   }
 
-  async createProduct(formData: FormData) {
+  async createProduct(data: any) {
     return this.makeRequestWithAuthRetry("/products", {
       method: "POST",
-      body: formData,
+      body: JSON.stringify(data),
     });
   }
 
-  async updateProduct(productId: string, formData: FormData) {
-    return this.makeRequestWithAuthRetry(`/product/${productId}`, {
+  async updateProduct(productId: string, data: any) {
+    return this.makeRequestWithAuthRetry(`/products/${productId}`, {
       method: "PUT",
-      body: formData,
+      body: JSON.stringify(data),
     });
   }
 
@@ -182,8 +200,6 @@ class ServerApiService {
       method: "DELETE",
     });
   }
-
-  // Quotation Management
 
   async getQuotationList() {
     return this.makeRequestWithAuthRetry(
@@ -239,6 +255,24 @@ class ServerApiService {
       body: formData,
     });
   }
+
+  async updateQuotationStatus(
+    quotationId: string,
+    status: string,
+    updatedBy: number
+  ) {
+    return this.makeRequestWithAuthRetry(`/quotations/status/${quotationId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: status,
+        updated_by: updatedBy,
+      }),
+    });
+  }
+
   async getQuotationDetail(quotationId: string) {
     return this.makeRequestWithAuthRetry(`/quotations/${quotationId}`);
   }
@@ -248,10 +282,9 @@ class ServerApiService {
     });
   }
 
-  // Purchase Order Management
   async getPurchaseOrderList() {
     return this.makeRequestWithAuthRetry(
-      `@/components/purchase-order/getAllPurchaseOrderComplete`,
+      `/purchase-orders/getAllPurchaseOrderComplete`,
       {
         method: "GET",
       }
@@ -298,6 +331,7 @@ class ServerApiService {
       body: formData,
     });
   }
+
   async updatePurchaseOrder(quotationId: string, formData: FormData) {
     return this.makeRequestWithAuthRetry(`/purchase-orders/${quotationId}`, {
       method: "PUT",
@@ -305,11 +339,30 @@ class ServerApiService {
     });
   }
 
+  async updatePurchaseOrderStatus(
+    purchaseOrderId: string,
+    status: string,
+    updatedBy: number
+  ) {
+    return this.makeRequestWithAuthRetry(
+      `/purchase-orders/status/${purchaseOrderId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: status,
+          updated_by: updatedBy,
+        }),
+      }
+    );
+  }
+
   async getPurchaseOrderDetail(purchaseOrderId: string) {
     return this.makeRequestWithAuthRetry(`/purchase-orders/${purchaseOrderId}`);
   }
 
-  // Delivery Order
   async getDeliveryOrders(filters: Record<string, any> = {}) {
     const body = {
       page: filters.page || 1,
@@ -361,7 +414,6 @@ class ServerApiService {
     });
   }
 
-  // Invoice
   async getInvoices(filters: Record<string, any> = {}) {
     const body = {
       page: filters.page || 1,
@@ -393,6 +445,41 @@ class ServerApiService {
         filters: responseData.filters || {},
       },
     };
+  }
+
+  async getInvoiceDetail(invoiceId: string) {
+    return this.makeRequestWithAuthRetry(`/invoices/${invoiceId}`);
+  }
+
+  async createInvoice(formData: FormData) {
+    return this.makeRequestWithAuthRetry("/invoices", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
+  async updateInvoice(invoiceId: string, formData: FormData) {
+    return this.makeRequestWithAuthRetry(`/invoices/${invoiceId}`, {
+      method: "PUT",
+      body: formData,
+    });
+  }
+
+  async updateInvoiceStatus(
+    invoiceId: string,
+    status: string,
+    updatedBy: number
+  ) {
+    return this.makeRequestWithAuthRetry(`/invoice/status/${invoiceId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: status,
+        updated_by: updatedBy,
+      }),
+    });
   }
 
   /**

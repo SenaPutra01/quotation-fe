@@ -108,11 +108,6 @@ export function EditUserModal({
       const result = await updateUserAction(user.id, data);
 
       if (result.success) {
-        toast({
-          title: "Success",
-          description: result.message || "User updated successfully",
-        });
-
         const updatedUser = {
           ...user,
           ...data,
@@ -151,7 +146,6 @@ export function EditUserModal({
       showCloseButton={false}
     >
       <Form {...form}>
-        {/* FORM HARUS DI DALAM form TAG DAN BUTTON HARUS type="submit" */}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <FormField
@@ -274,7 +268,6 @@ export function EditUserModal({
             )}
           />
 
-          {/* BUTTONS HARUS DI DALAM FORM */}
           <div className="flex gap-3 w-full pt-4">
             <Button
               type="button"

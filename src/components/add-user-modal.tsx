@@ -131,12 +131,15 @@ export function AddUserModal({
           const token = localStorage.getItem("accessToken");
           if (!token) return;
 
-          const response = await fetch(`${process.env.BACKEND_URL}/roles`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/roles`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
 
           if (isMounted && response.ok) {
             const result = await response.json();
@@ -341,7 +344,6 @@ export function AddUserModal({
                         </Button>
                       </div>
 
-                      {/* Password Strength Indicator */}
                       {passwordValue && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">

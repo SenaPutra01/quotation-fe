@@ -80,7 +80,6 @@ export default function PurchaseOrderDetailPage() {
 
       <Card className="border-0 shadow-none">
         <CardContent className="space-y-6">
-          {/* Header */}
           <div className="flex justify-between items-start flex-wrap gap-4 border-b pb-4">
             <div className="space-y-1 text-sm">
               <p>

@@ -120,6 +120,38 @@ export async function updateQuotationAction(
   }
 }
 
+export async function updateQuotationStatusAction(
+  quotationId: string,
+  status: string,
+  updatedBy: number
+) {
+  try {
+    const result = await serverApiService.updateQuotationStatus(
+      quotationId,
+      status,
+      updatedBy
+    );
+
+    revalidateTag("quotations");
+    revalidateTag(`quotation-${quotationId}`);
+
+    return {
+      success: true,
+      data: result.data || result,
+      message: `Quotation status updated to ${status} successfully`,
+    };
+  } catch (error) {
+    console.error("Error updating quotation status:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update quotation status",
+    };
+  }
+}
+
 export async function deleteQuotationAction(quotationId: string) {
   try {
     await serverApiService.deleteQuotation(quotationId);

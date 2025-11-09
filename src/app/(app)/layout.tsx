@@ -16,7 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
-        <ActiveThemeProvider initialTheme="blue">
+        <ActiveThemeProvider initialTheme="green">
           <SidebarProvider
             style={
               {

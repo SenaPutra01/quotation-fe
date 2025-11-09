@@ -23,6 +23,34 @@ export async function getClientsAction() {
   }
 }
 
+export async function getClientsListAction(filters?: Record<string, any>) {
+  try {
+    const result = await serverApiService.getClients(filters);
+
+    return {
+      success: true,
+      data: result.data,
+      meta: result.meta,
+    };
+  } catch (error) {
+    console.error("Error fetching clients:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch clients",
+      data: [],
+      meta: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+        filters: {},
+      },
+    };
+  }
+}
+
 export async function getClientDetailAction(clientId: string) {
   try {
     const result = await serverApiService.getClientDetail(clientId);

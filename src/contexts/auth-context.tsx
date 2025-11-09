@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: { email: string; password: string }) => {
     try {
-      setIsLoading(true);
+      setIsLoading(false);
       const result = await loginAction(credentials);
 
       if (!result.success) {

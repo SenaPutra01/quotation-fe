@@ -233,7 +233,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       avatar: "/avatars/shadcn.jpg",
     },
     teams: [
-      { name: "Finance Morp", logo: GalleryVerticalEnd, plan: "Enterprise" },
+      {
+        name: "Finance Morp",
+        logo: "/images/hijau-no-bg.png",
+        plan: "Enterprise",
+      },
       { name: "Acme Corp.", logo: AudioWaveform, plan: "Startup" },
       { name: "Evil Corp.", logo: Command, plan: "Free" },
     ],

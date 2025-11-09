@@ -341,7 +341,6 @@ export function AddUserModal({
                       </Button>
                     </div>
 
-                    {/* Password Strength Indicator */}
                     {passwordValue && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -435,9 +434,9 @@ export function AddUserModal({
                           <span className="text-xs text-muted-foreground">
                             {role.description}
                           </span>
-                          <span className="text-xs text-blue-600">
+                          {/* <span className="text-xs text-blue-600">
                             {role.user_count} users
-                          </span>
+                          </span> */}
                         </div>
                       </SelectItem>
                     ))}

@@ -5,7 +5,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectTrigger,
@@ -14,65 +13,153 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import {
-  IconCircleCheckFilled,
   IconClock,
-  IconDotsVertical,
+  IconFileInvoice,
   IconLoader2,
   IconSearch,
   IconX,
+  IconCircleCheckFilled,
   IconTruckDelivery,
-  IconFileInvoice,
 } from "@tabler/icons-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
-import { getInvoiceAction } from "@/actions/invoice-actions";
 import { SendEmailDialog } from "../emails/modal";
+import { useToast } from "@/hooks/use-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { StatusBadge } from "@/components/status-badges";
+import { TableActions } from "../table-actions";
+import {
+  getInvoiceAction,
+  updateInvoiceStatusAction,
+} from "@/actions/invoice-actions";
+
+import {
+  Invoice,
+  InvoiceStatus,
+  InvoiceFilters,
+  safeValidateInvoiceResponse,
+  extractInvoicesFromResponse,
+  extractTotalFromResponse,
+} from "@/types/invoice";
+
+const STATUS_CONFIG = {
+  draft: {
+    label: "Draft",
+    color:
+      "text-gray-600 border-gray-200 bg-gray-50 dark:bg-gray-950 dark:border-gray-800",
+    icon: IconClock,
+    iconClass: "text-gray-400 dark:text-gray-500",
+  },
+  pending: {
+    label: "Pending",
+    color:
+      "text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800",
+    icon: IconFileInvoice,
+    iconClass: "text-blue-500 dark:text-blue-400",
+  },
+  approved: {
+    label: "Approved",
+    color:
+      "text-green-600 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800",
+    icon: IconCircleCheckFilled,
+    iconClass: "text-green-500 dark:text-green-400",
+  },
+  delivered: {
+    label: "Delivered",
+    color:
+      "text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800",
+    icon: IconTruckDelivery,
+    iconClass: "text-amber-500 dark:text-amber-400",
+  },
+  rejected: {
+    label: "Rejected",
+    color:
+      "text-red-600 border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800",
+    icon: IconX,
+    iconClass: "text-red-500 dark:text-red-400",
+  },
+  cancelled: {
+    label: "Cancelled",
+    color:
+      "text-red-600 border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800",
+    icon: IconX,
+    iconClass: "text-red-500 dark:text-red-400",
+  },
+};
 
 export default function InvoiceTable() {
-  const router = useRouter();
-
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [total, setTotal] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
 
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
+  const router = useRouter();
+  const { toast } = useToast();
+  const confirmDialog = useConfirmDialog();
 
   const handleAddInvoice = () => {
-    router.push("/delivery-orders/create");
+    router.push("/invoices/create");
   };
 
-  const fetchPurchaseOrders = async () => {
+  const fetchInvoices = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const filters = {
+      const filters: InvoiceFilters = {
         status: statusFilter || undefined,
         search: search || undefined,
         page,
         limit: pageSize,
       };
 
-      const res = await getInvoiceAction(filters);
+      const response = await getInvoiceAction(filters);
 
-      if (res.success && Array.isArray(res.data)) {
-        setData(res.data);
-        setTotal(res.meta?.total ?? res.data.length ?? 0);
+      const validationResult = safeValidateInvoiceResponse(response);
+
+      if (validationResult.success) {
+        const invoices = extractInvoicesFromResponse(validationResult.data);
+        const totalCount = extractTotalFromResponse(validationResult.data);
+
+        setData(invoices);
+        setTotal(totalCount);
+
+        if (invoices.length === 0) {
+          setError("No invoices found");
+        }
       } else {
-        setData([]);
-        setTotal(0);
+        console.warn("Using manual parsing fallback");
+
+        let invoices: Invoice[] = [];
+        let totalCount = 0;
+
+        if (response && response.success !== false) {
+          if (Array.isArray(response.data)) {
+            invoices = response.data;
+            totalCount = response.meta?.total ?? response.data.length;
+          } else if (response.data && Array.isArray(response.data.data)) {
+            invoices = response.data.data;
+            totalCount =
+              response.data.pagination?.total ?? response.data.data.length;
+          }
+        }
+
+        setData(invoices);
+        setTotal(totalCount);
+
+        if (invoices.length === 0) {
+          setError("No invoices found");
+        }
       }
     } catch (err) {
-      console.error("Error fetching purchase orders:", err);
+      console.error("Error fetching invoices:", err);
+      setError("Failed to fetch invoices");
       setData([]);
       setTotal(0);
     } finally {
@@ -81,51 +168,87 @@ export default function InvoiceTable() {
   };
 
   useEffect(() => {
-    fetchPurchaseOrders();
+    fetchInvoices();
   }, [statusFilter, search, page, pageSize]);
 
-  const statusColumn: ColumnDef<any> = {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.original.status?.toLowerCase() || "";
-      const getStatusIcon = () => {
-        switch (status) {
-          case "approved":
-          case "done":
-            return (
-              <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-            );
-          case "rejected":
-          case "cancelled":
-            return <IconX className="text-red-500 dark:text-red-400" />;
-          case "draft":
-            return <IconClock className="text-gray-400 dark:text-gray-500" />;
-          case "pending":
-            return (
-              <IconFileInvoice className="text-blue-500 dark:text-blue-400" />
-            );
-          case "delivered":
-            return <IconTruckDelivery className="text-amber-500" />;
-          default:
-            return (
-              <IconLoader2 className="animate-spin text-muted-foreground" />
-            );
-        }
-      };
-      return (
-        <Badge
-          variant="outline"
-          className="flex items-center gap-1.5 px-2 py-0.5 text-muted-foreground capitalize"
-        >
-          {getStatusIcon()}
-          {row.original.status || "-"}
-        </Badge>
+  const handleStatusChange = async (
+    invoiceId: number,
+    newStatus: InvoiceStatus
+  ) => {
+    try {
+      const updatedBy = 1;
+
+      const result = await updateInvoiceStatusAction(
+        invoiceId.toString(),
+        newStatus,
+        updatedBy
       );
-    },
+
+      if (result.success) {
+        fetchInvoices();
+        toast({
+          title: "Status updated successfully",
+          description: `Invoice status has been changed to ${newStatus}.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Failed to update status",
+          description: result.error || "Unknown error occurred",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Failed to update status",
+        description: "An error occurred while updating status",
+        variant: "destructive",
+      });
+    }
   };
 
-  const columns: ColumnDef<any>[] = [
+  const handleCancelInvoice = async (invoice: Invoice) => {
+    const confirmed = await confirmDialog.confirm({
+      title: "Cancel Invoice",
+      description: `Are you sure you want to cancel invoice ${invoice.invoice_number}? This action cannot be undone.`,
+      confirmText: "Yes, Cancel Invoice",
+      variant: "destructive",
+      onConfirm: async () => {
+        await handleStatusChange(invoice.id, "cancel");
+        confirmDialog.closeDialog();
+      },
+      onCancel: () => {
+        confirmDialog.closeDialog();
+      },
+    });
+  };
+
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    const confirmed = await confirmDialog.confirm({
+      title: "Delete Invoice",
+      description: `Are you sure you want to delete invoice ${invoice.invoice_number}? This action cannot be undone and all data will be permanently removed.`,
+      confirmText: "Yes, Delete Invoice",
+      variant: "destructive",
+      onConfirm: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        toast({
+          title: "Invoice deleted",
+          description: `Invoice ${invoice.invoice_number} has been deleted.`,
+          variant: "default",
+        });
+
+        fetchInvoices();
+        confirmDialog.closeDialog();
+      },
+      onCancel: () => {
+        confirmDialog.closeDialog();
+      },
+    });
+  };
+
+  const columns: ColumnDef<Invoice>[] = [
     {
       accessorKey: "invoice_number",
       header: "Invoice Number",
@@ -146,14 +269,14 @@ export default function InvoiceTable() {
     {
       accessorKey: "project_name",
       header: "Project Name",
-      cell: ({ row }) => row.original.purchase_order?.project_name || "-",
+      cell: ({ row }) => row.original.project_name || "-",
     },
     {
       accessorKey: "total_amount",
       header: "Total Amount",
       cell: ({ row }) => (
         <span className="text-left block">
-          {Number(row.original.total_amount).toLocaleString("id-ID", {
+          {Number(row.original.total_amount || 0).toLocaleString("id-ID", {
             style: "currency",
             currency: "IDR",
           })}
@@ -168,59 +291,55 @@ export default function InvoiceTable() {
           ? new Date(row.original.invoice_date).toLocaleDateString("id-ID")
           : "-",
     },
-    statusColumn,
+    {
+      accessorKey: "due_date",
+      header: "Due Date",
+      cell: ({ row }) => {
+        if (!row.original.invoice_date) return "-";
+
+        const invoiceDate = new Date(row.original.invoice_date);
+        const dueDate = new Date(invoiceDate);
+        dueDate.setDate(invoiceDate.getDate() + 30);
+
+        return dueDate.toLocaleDateString("id-ID");
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    },
     {
       id: "actions",
       cell: ({ row }) => {
-        const po = row.original;
+        const invoice = row.original;
+
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-                size="icon"
-              >
-                <IconDotsVertical />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onClick={() => router.push(`/delivery-orders/${po.id}/edit`)}
-              >
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => router.push(`/delivery-orders/${po.id}`)}
-              >
-                View Detail
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedInvoice(po);
-                  setIsEmailModalOpen(true);
-                }}
-              >
-                Send Email
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => {
-                  if (confirm(`Delete Purchase Order ${po.po_number}?`)) {
-                    alert("Delete function belum diimplementasi");
-                  }
-                }}
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TableActions
+            item={invoice}
+            basePath="/invoices"
+            onCancel={handleCancelInvoice}
+            onDelete={handleDeleteInvoice}
+            onSendEmail={(invoice) => {
+              setSelectedInvoice(invoice);
+              setIsEmailModalOpen(true);
+            }}
+          />
         );
       },
     },
   ];
+
+  const handleEmailSuccess = () => {
+    toast({
+      title: "Email sent successfully",
+      description: `Invoice ${selectedInvoice?.invoice_number} has been sent via email.`,
+      variant: "default",
+    });
+
+    setSelectedInvoice(null);
+    fetchInvoices();
+  };
 
   return (
     <>
@@ -234,7 +353,7 @@ export default function InvoiceTable() {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 setPage(1);
-                fetchPurchaseOrders();
+                fetchInvoices();
               }
             }}
           />
@@ -242,7 +361,7 @@ export default function InvoiceTable() {
             variant="outline"
             onClick={() => {
               setPage(1);
-              fetchPurchaseOrders();
+              fetchInvoices();
             }}
           >
             <IconSearch size={18} />
@@ -260,12 +379,14 @@ export default function InvoiceTable() {
               <SelectValue placeholder="Filter by Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="delivered">Delivered</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
+              {(
+                Object.keys(STATUS_CONFIG) as Array<keyof typeof STATUS_CONFIG>
+              ).map((status) => (
+                <SelectItem key={status} value={status}>
+                  {STATUS_CONFIG[status as keyof typeof STATUS_CONFIG].label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button
@@ -274,7 +395,7 @@ export default function InvoiceTable() {
               setStatusFilter("");
               setSearch("");
               setPage(1);
-              fetchPurchaseOrders();
+              fetchInvoices();
             }}
           >
             Reset
@@ -282,10 +403,15 @@ export default function InvoiceTable() {
         </div>
       </div>
 
+      {error && (
+        <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-md mb-4">
+          {error}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center py-10">
-          <IconLoader2 className="animate-spin mr-2" /> Loading purchase
-          orders...
+          <IconLoader2 className="animate-spin mr-2" /> Loading invoices...
         </div>
       ) : (
         <DataTable
@@ -297,10 +423,10 @@ export default function InvoiceTable() {
           isLoading={loading}
           onPageChange={(p) => {
             setPage(p);
-            fetchPurchaseOrders();
+            fetchInvoices();
           }}
           onAdd={handleAddInvoice}
-          addButtonLabel="Add Delivery Order"
+          addButtonLabel="Add Invoice"
         />
       )}
 
@@ -309,10 +435,22 @@ export default function InvoiceTable() {
         onOpenChange={setIsEmailModalOpen}
         type="invoice"
         number={selectedInvoice?.invoice_number || ""}
-        defaultSubject={`Purchase Order ${
-          selectedInvoice?.invoice_number || ""
-        }`}
-        defaultMessage="Berikut lampiran Invoice Anda."
+        defaultSubject={`Invoice ${selectedInvoice?.invoice_number || ""}`}
+        defaultMessage="Berikut lampiran invoice Anda."
+        onSuccess={handleEmailSuccess}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.isOpen}
+        onOpenChange={confirmDialog.closeDialog}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        variant={confirmDialog.variant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.onConfirm!}
+        onCancel={confirmDialog.onCancel}
       />
     </>
   );

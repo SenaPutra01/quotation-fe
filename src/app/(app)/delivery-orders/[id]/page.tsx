@@ -86,7 +86,6 @@ export default function DeliveryOrderDetailPage() {
 
       <Card className="border-0 shadow-none">
         <CardContent className="space-y-6">
-          {/* Header */}
           <div className="flex justify-between items-start flex-wrap gap-4 border-b pb-4">
             <div className="space-y-1 text-sm">
               <p>
@@ -163,7 +162,6 @@ export default function DeliveryOrderDetailPage() {
             </div>
           )}
 
-          {/* Delivery Items */}
           <div className="overflow-x-auto mt-6">
             <table className="w-full border text-sm">
               <thead className="bg-muted">
@@ -195,7 +193,6 @@ export default function DeliveryOrderDetailPage() {
             </table>
           </div>
 
-          {/* Summary */}
           <div className="flex justify-end mt-4">
             <div className="text-sm space-y-1 w-64">
               <div className="flex justify-between font-semibold border-t pt-2">
@@ -210,7 +207,6 @@ export default function DeliveryOrderDetailPage() {
             </div>
           </div>
 
-          {/* All Signatures Section - MENGGANTI section signatures individual */}
           {deliveryOrder.signatures && deliveryOrder.signatures.length > 0 && (
             <div className="mt-8 border-t pt-6">
               <h3 className="font-semibold mb-6 text-xl text-center">
@@ -264,7 +260,6 @@ export default function DeliveryOrderDetailPage() {
             </div>
           )}
 
-          {/* Additional Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 border-t pt-6">
             <div>
               <h3 className="font-semibold mb-2">Delivery Information</h3>
@@ -324,7 +319,6 @@ export default function DeliveryOrderDetailPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex justify-end gap-2 mt-8 border-t pt-4">
             <Button
               variant="outline"
@@ -341,7 +335,6 @@ export default function DeliveryOrderDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Print Styles */}
       <style jsx global>{`
         @media print {
           .no-print {

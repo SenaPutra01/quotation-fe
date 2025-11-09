@@ -47,7 +47,7 @@ export const quotationSchema = z.object({
   requestor: z.string(),
   total_amount: z.union([z.string(), z.number()]),
   valid_until: z.string(),
-  status: z.enum(["draft", "sent", "accepted", "rejected"]),
+  status: z.enum(["draft", "sent", "submit", "cancel"]),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

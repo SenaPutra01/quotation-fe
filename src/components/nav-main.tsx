@@ -37,7 +37,7 @@ export function NavMain({
   const pathname = usePathname();
 
   const isDropdownActive = (dropdownItems: { url: string }[] = []) => {
-    return dropdownItems.some((item) => pathname === item.url);
+    return dropdownItems.some((item) => pathname.startsWith(item.url));
   };
 
   return (
@@ -50,7 +50,7 @@ export function NavMain({
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.url ? true : false}
+                  isActive={pathname.startsWith(item.url)}
                 >
                   <Link href={item.url}>
                     <item.icon />
@@ -110,7 +110,7 @@ function DropdownMenuItem({
               <SidebarMenuSubItem key={subItem.title}>
                 <SidebarMenuSubButton
                   asChild
-                  isActive={pathname === subItem.url ? true : false}
+                  isActive={pathname.startsWith(subItem.url)}
                 >
                   <Link href={subItem.url}>
                     <span>{subItem.title}</span>

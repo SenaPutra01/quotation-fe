@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { META_THEME_COLORS } from "@/lib/config";
 import { TokenMonitor } from "@/components/auth/token-monitoring";
 import { Toaster } from "sonner";
+import { checkAndRefresh } from "../actions/token-actions";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,6 +19,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  checkAndRefresh();
   return (
     <html lang="en" suppressHydrationWarning>
       <meta name="theme-color" content={META_THEME_COLORS.light} />

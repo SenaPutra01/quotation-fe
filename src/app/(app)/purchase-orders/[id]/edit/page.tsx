@@ -17,7 +17,7 @@ export default function EditPurchaseOrderPage() {
     fetchData();
   }, [params.id]);
 
-  if (!data) return <p className="p-6">Loading quotation...</p>;
-
-  return <PurchaseOrderForm mode="edit" poId={params.id} initialData={data} />;
+  return (
+    <PurchaseOrderForm mode="edit" quotationId={params.id} initialData={data} />
+  );
 }

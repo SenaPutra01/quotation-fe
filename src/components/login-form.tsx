@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,32 +24,26 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
   const [error, setError] = React.useState("");
 
   const { login } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("from") || "/dashboard";
 
   async function onSubmit(event: React.SyntheticEvent) {
     event.preventDefault();
+    event.stopPropagation();
 
     setError("");
     setIsLoading(true);
 
     try {
       if (!email || !password) {
-        setIsLoading(false);
         throw new Error("Please fill in all fields");
       }
 
       if (!/\S+@\S+\.\S+/.test(email)) {
-        setIsLoading(false);
         throw new Error("Please enter a valid email address");
       }
 
       await login({ email, password });
-
-      router.replace(redirectTo);
-
-      router.refresh();
     } catch (err) {
       let errorMessage = "An unexpected error occurred. Please try again.";
 
@@ -75,6 +69,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
       }
 
       setError(errorMessage);
+    } finally {
       setIsLoading(false);
     }
   }
@@ -91,6 +86,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !isLoading) {
+      e.preventDefault();
       onSubmit(e);
     }
   };
@@ -157,7 +153,9 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                   className="h-11 px-4 py-3 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-700"
                   required
                 />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3"></div>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <LockIcon className="h-5 w-5 text-gray-400" />
+                </div>
               </div>
             </div>
 
@@ -172,9 +170,6 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-red-700 font-medium">{error}</p>
-                    <p className="text-sm text-red-600 mt-1">
-                      If you continue to have issues, please contact support.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -201,7 +196,6 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
         </div>
       </form>
 
-      {/* Additional Info */}
       <div className="text-center">
         <p className="text-sm text-gray-600">
           Don't have an account?{" "}
@@ -214,26 +208,6 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
           </button>
         </p>
       </div>
-
-      {process.env.NEXT_PUBLIC_APP_ENV === "development" && (
-        <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-          <p className="text-xs text-gray-600">
-            <strong>Debug Info:</strong>
-            <br />
-            Email: {email}
-            <br />
-            Password: {password ? "***" : "(empty)"}
-            <br />
-            Redirect to: {redirectTo}
-            <br />
-            Loading: {isLoading ? "Yes" : "No"}
-            <br />
-            Has Error: {error ? "Yes" : "No"}
-            <br />
-            Error Message: {error || "(none)"}
-          </p>
-        </div>
-      )}
     </div>
   );
 }

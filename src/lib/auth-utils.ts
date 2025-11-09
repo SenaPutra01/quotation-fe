@@ -36,7 +36,7 @@ export function saveUserData(user: UserData): void {
     try {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     } catch (error) {
-      console.error("❌ Failed to save user data:", error);
+      console.error(" Failed to save user data:", error);
     }
   }
 }
@@ -50,7 +50,7 @@ export function getUserData(): UserData | null {
       const userData = localStorage.getItem(USER_STORAGE_KEY);
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
-      console.error("❌ Failed to get user data:", error);
+      console.error("Failed to get user data:", error);
       return null;
     }
   }
@@ -65,7 +65,7 @@ export function clearUserData(): void {
     try {
       localStorage.removeItem(USER_STORAGE_KEY);
     } catch (error) {
-      console.error("❌ Failed to clear user data:", error);
+      console.error("Failed to clear user data:", error);
     }
   }
 }

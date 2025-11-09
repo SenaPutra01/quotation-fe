@@ -57,19 +57,21 @@ export async function createPurchaseOrderAction(formData: FormData) {
     const result = await serverApiService.createPurchaseOrder(formData);
     revalidateTag("purchaseOrders");
 
-    const quotationNumber = formData.get("quotation_number");
+    const poNumber = formData.get("po_number");
 
     return {
       success: true,
       data: result.data || result,
-      message: `Quotation ${quotationNumber?.toString} created successfully`,
+      message: `PurchaseOrder ${poNumber?.toString} created successfully`,
     };
   } catch (error) {
-    console.error("Error creating quotation:", error);
+    console.error("Error creating purchase order:", error);
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to create quotation",
+        error instanceof Error
+          ? error.message
+          : "Failed to create purchase order",
     };
   }
 }
@@ -83,6 +85,7 @@ export async function updatePurchaseOrderAction(
       purchaseOrderId,
       formData
     );
+
     revalidateTag("purchase-orders");
 
     return {
@@ -98,6 +101,38 @@ export async function updatePurchaseOrderAction(
         error instanceof Error
           ? error.message
           : "Failed to update purchase order",
+    };
+  }
+}
+
+export async function updatePurchaseOrderStatusAction(
+  purchaseOrderId: string,
+  status: string,
+  updatedBy: number
+) {
+  try {
+    const result = await serverApiService.updatePurchaseOrderStatus(
+      purchaseOrderId,
+      status,
+      updatedBy
+    );
+
+    revalidateTag("purchase-orders");
+    revalidateTag(`purchase order - ${purchaseOrderId}`);
+
+    return {
+      success: true,
+      data: result.data || result,
+      message: `Purchase Order status updated to ${status} successfully`,
+    };
+  } catch (error) {
+    console.error("Error updating quotation status:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update quotation status",
     };
   }
 }

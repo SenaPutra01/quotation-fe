@@ -66,7 +66,7 @@ export function UserDetailContent({
           throw new Error(result.error || "Failed to fetch user details");
         }
       } catch (err) {
-        console.error("❌ Error in component:", err);
+        console.error("Error in component:", err);
         setError(
           err instanceof Error ? err.message : "Failed to fetch user details"
         );
@@ -114,7 +114,7 @@ export function UserDetailContent({
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
-          <Link href="/user">
+          <Link href="/users">
             <Button variant="outline" size="icon">
               <IconArrowLeft className="h-4 w-4" />
             </Button>
@@ -168,7 +168,6 @@ export function UserDetailContent({
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" onClick={() => router.back()}>
@@ -200,10 +199,8 @@ export function UserDetailContent({
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
-        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-3">
-            {/* User Profile Card */}
             <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle>User Profile</CardTitle>
@@ -290,7 +287,6 @@ export function UserDetailContent({
               </CardContent>
             </Card>
 
-            {/* Roles Summary Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Roles</CardTitle>
@@ -325,10 +321,8 @@ export function UserDetailContent({
           </div>
         </TabsContent>
 
-        {/* Roles & Permissions Tab */}
         <TabsContent value="roles" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Roles Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Assigned Roles</CardTitle>
@@ -367,7 +361,6 @@ export function UserDetailContent({
               </CardContent>
             </Card>
 
-            {/* Permissions Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Effective Permissions</CardTitle>
@@ -419,7 +412,6 @@ export function UserDetailContent({
             </Card>
           </div>
 
-          {/* Permission Summary */}
           <Card>
             <CardHeader>
               <CardTitle>Permission Summary</CardTitle>
@@ -483,7 +475,6 @@ export function UserDetailContent({
           </Card>
         </TabsContent>
 
-        {/* Activity Tab */}
         <TabsContent value="activity" className="space-y-6">
           <Card>
             <CardHeader>

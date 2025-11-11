@@ -15,9 +15,15 @@ import {
   LoginIcon,
 } from "@/components/loginIcons";
 
-interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
+  onSuccess?: () => void;
+}
 
-export function LoginForm({ className, ...props }: UserAuthFormProps) {
+export function LoginForm({
+  className,
+  onSuccess,
+  ...props
+}: UserAuthFormProps) {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -44,6 +50,10 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
       }
 
       await login({ email, password });
+
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err) {
       let errorMessage = "An unexpected error occurred. Please try again.";
 

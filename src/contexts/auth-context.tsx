@@ -42,9 +42,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
 
   const loadUserFromStorage = React.useCallback(() => {
-    const userData = getUserData();
-    if (userData) {
-      setUser(userData as User);
+    try {
+      const userData = getUserData();
+      if (userData) {
+        setUser(userData as User);
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error("Error loading user from storage:", error);
     }
   }, []);
 
@@ -52,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       const authStatus = await getAuthStatus();
+
       setIsAuthenticated(authStatus.isAuthenticated);
 
       if (authStatus.isAuthenticated) {
@@ -72,7 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: { email: string; password: string }) => {
     try {
-      setIsLoading(false);
+      setIsLoading(true);
+
       const result = await loginAction(credentials);
 
       if (!result.success) {
@@ -87,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return Promise.resolve();
     } catch (error) {
+      console.error("Login error:", error);
       setIsAuthenticated(false);
       setUser(null);
       clearUserData();
@@ -98,23 +106,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      setIsLoading(true);
       clearUserData();
-
       setUser(null);
       setIsAuthenticated(false);
-
       await logoutAction();
     } catch (error) {
       console.error("Logout error:", error);
       setUser(null);
       setIsAuthenticated(false);
       clearUserData();
+    } finally {
+      setIsLoading(false);
     }
   };
 
   React.useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  React.useEffect(() => {
+    console.log("Auth state updated:", {
+      user,
+      isLoading,
+      isAuthenticated,
+    });
+  }, [user, isLoading, isAuthenticated]);
 
   const value = {
     user,

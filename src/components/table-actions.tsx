@@ -34,6 +34,8 @@ interface DropdownActionsProps<T> {
   showCancelCondition?: (item: T) => boolean;
   showSendEmailCondition?: (item: T) => boolean;
 
+  dataType?: "default" | "invoice";
+
   externalUpdating?: boolean;
 
   align?: "start" | "center" | "end";
@@ -51,6 +53,7 @@ export function TableActions<T extends Record<string, any>>({
   customActions = [],
   showCancelCondition,
   showSendEmailCondition,
+  dataType = "default",
   externalUpdating,
   align = "end",
   className = "w-48",
@@ -67,13 +70,26 @@ export function TableActions<T extends Record<string, any>>({
   const defaultShowSendEmailCondition = (item: T) =>
     ["submit", "sent"].includes(item[statusField]?.toLowerCase());
 
+  const invoiceShowSendEmailCondition = (item: T) =>
+    item[statusField]?.toLowerCase() === "draft";
+
   const shouldShowCancel = showCancelCondition
     ? showCancelCondition(item)
     : defaultShowCancelCondition(item);
 
-  const shouldShowSendEmail = showSendEmailCondition
-    ? showSendEmailCondition(item)
-    : defaultShowSendEmailCondition(item);
+  const getSendEmailCondition = () => {
+    if (showSendEmailCondition) {
+      return showSendEmailCondition(item);
+    }
+
+    if (dataType === "invoice") {
+      return invoiceShowSendEmailCondition(item);
+    }
+
+    return defaultShowSendEmailCondition(item);
+  };
+
+  const shouldShowSendEmail = getSendEmailCondition();
 
   const handleAction = async (action: (item: T) => void | Promise<void>) => {
     if (externalUpdating === undefined) {

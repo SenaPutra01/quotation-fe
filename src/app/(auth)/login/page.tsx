@@ -4,61 +4,115 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { LoginForm } from "@/components/login-form";
-import { ImageCaptchaSlider } from "@/components/imageCaptchaSlider";
+import { SliderCaptcha } from "@/components/sliderCaptcha";
 import { Icons } from "@/components/icons";
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [loginCompleted, setLoginCompleted] = useState(false);
 
   const redirectTo = searchParams.get("from") || "/dashboard";
+  const returnUrl = searchParams.get("returnUrl") || "/dashboard";
+
+  useEffect(() => {}, [
+    isAuthenticated,
+    isLoading,
+    showCaptcha,
+    captchaVerified,
+    loginCompleted,
+  ]);
 
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (
+      isAuthenticated &&
+      !isLoading &&
+      loginCompleted &&
+      !showCaptcha &&
+      !captchaVerified
+    ) {
       setShowCaptcha(true);
     }
-  }, [isAuthenticated, isLoading]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    loginCompleted,
+    showCaptcha,
+    captchaVerified,
+  ]);
 
-  const handleCaptchaSuccess = () => {
+  useEffect(() => {
+    if (captchaVerified && isAuthenticated) {
+      const timer = setTimeout(() => {
+        console.log("Redirecting now...");
+        router.replace(returnUrl);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [captchaVerified, isAuthenticated, router, returnUrl]);
+
+  const handleCaptchaSuccess = (sessionId: string, position: number) => {
+    setCaptchaVerified(true);
     setShowCaptcha(false);
-    setIsRedirecting(true);
+  };
 
-    const timer = setTimeout(() => {
-      router.replace(redirectTo);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+  const handleCaptchaError = (error: string) => {
+    console.error("Captcha error:", error);
   };
 
   const handleCaptchaClose = () => {
     setShowCaptcha(false);
+
+    if (isAuthenticated) {
+      setCaptchaVerified(true);
+    }
   };
 
-  if (isLoading || isRedirecting) {
+  const handleLoginSuccess = () => {
+    setLoginCompleted(true);
+  };
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
           <Icons.spinner className="h-12 w-12 animate-spin text-indigo-600 mx-auto" />
-          <p className="mt-4 text-gray-600">
-            {isRedirecting
-              ? "Verification complete! Redirecting to dashboard..."
-              : "Checking authentication..."}
-          </p>
-          {isRedirecting && (
-            <p className="mt-2 text-sm text-gray-500">
-              You will be redirected automatically
-            </p>
-          )}
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
         </div>
       </div>
     );
   }
 
-  if (isAuthenticated && !showCaptcha) {
-    return null;
+  if (isAuthenticated && captchaVerified) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Icons.check className="h-8 w-8 text-white" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Verification Successful!
+          </h3>
+          <p className="text-gray-600">Redirecting to dashboard...</p>
+          <Icons.spinner className="h-6 w-6 animate-spin text-indigo-600 mx-auto mt-4" />
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && !showCaptcha && !captchaVerified) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <Icons.spinner className="h-12 w-12 animate-spin text-indigo-600 mx-auto" />
+          <p className="mt-4 text-gray-600">Preparing verification...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -126,17 +180,55 @@ export default function LoginPage() {
             </div>
 
             <div className="mt-8">
-              <LoginForm />
+              <LoginForm onSuccess={handleLoginSuccess} />
+            </div>
+
+            <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-start gap-3">
+                <div className="h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
+                  <span className="text-xs text-white">i</span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600">
+                    <strong>Security Notice:</strong> CAPTCHA verification is
+                    required after login to ensure account security.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <ImageCaptchaSlider
-        isOpen={showCaptcha}
-        onSuccess={handleCaptchaSuccess}
-        onClose={handleCaptchaClose}
-      />
+      {showCaptcha && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full mx-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Security Verification Required
+                </h3>
+                <button
+                  onClick={handleCaptchaClose}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <Icons.x className="h-5 w-5" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-6">
+                Complete the CAPTCHA to verify you're human and access your
+                dashboard.
+              </p>
+
+              <SliderCaptcha
+                onSuccess={handleCaptchaSuccess}
+                onError={handleCaptchaError}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

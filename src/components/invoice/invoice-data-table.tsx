@@ -318,6 +318,7 @@ export default function InvoiceTable() {
           <TableActions
             item={invoice}
             basePath="/invoices"
+            dataType="invoice"
             onCancel={handleCancelInvoice}
             onDelete={handleDeleteInvoice}
             onSendEmail={(invoice) => {

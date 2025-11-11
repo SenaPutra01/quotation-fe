@@ -13,17 +13,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Quotation } from "@/types/quotations";
-import {
-  IconCircleCheckFilled,
-  IconClock,
-  IconDotsVertical,
-  IconFileCheck,
-  IconLoader,
-  IconLoader2,
-  IconSearch,
-  IconX,
-  IconPlus,
-} from "@tabler/icons-react";
+import { IconDotsVertical, IconLoader2, IconSearch } from "@tabler/icons-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,11 +93,6 @@ export default function ClientTable() {
       accessorKey: "phone",
       header: "Phone",
       cell: ({ row }) => <span>{row.original.phone || "-"}</span>,
-    },
-    {
-      accessorKey: "address",
-      header: "Address",
-      cell: ({ row }) => <span>{row.original.address || "-"}</span>,
     },
     {
       id: "actions",

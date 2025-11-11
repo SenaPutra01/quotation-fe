@@ -63,6 +63,166 @@ class ServerApiService {
     }
   }
 
+  async generateSliderCaptcha(): Promise<{
+    sessionId: string;
+    backgroundImage: string;
+    puzzlePiece: string;
+    puzzleY: number;
+    canvasWidth: number;
+    canvasHeight: number;
+    puzzleSize: number;
+    expiresIn: number;
+    success?: boolean;
+    message?: string;
+  }> {
+    try {
+      const response = await fetch(`${API_URL}/captcha/generate`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-cache",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Failed to generate captcha: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.sessionId || !data.backgroundImage || !data.puzzlePiece) {
+        throw new Error("Invalid captcha response format");
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Captcha generation error:", error);
+      throw error;
+    }
+  }
+
+  async verifySliderCaptcha(
+    sessionId: string,
+    sliderPosition: number
+  ): Promise<{
+    message: string;
+    valid: boolean;
+    difference?: number;
+    success?: boolean;
+    token?: string;
+  }> {
+    try {
+      const response = await fetch(`${API_URL}/captcha/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId,
+          sliderPosition,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Captcha verification failed: ${response.status}`
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Captcha verification error:", error);
+      throw error;
+    }
+  }
+
+  async loginWithCaptcha(credentials: {
+    email: string;
+    password: string;
+    captchaSessionId: string;
+    sliderPosition: number;
+    captchaToken?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data?: {
+      user: any;
+      tokens: {
+        accessToken: string;
+        refreshToken: string;
+      };
+    };
+  }> {
+    try {
+      const captchaVerification = await this.verifySliderCaptcha(
+        credentials.captchaSessionId,
+        credentials.sliderPosition
+      );
+
+      if (!captchaVerification.valid) {
+        throw new Error(
+          captchaVerification.message || "Captcha verification failed"
+        );
+      }
+
+      const loginPayload: any = {
+        email: credentials.email,
+        password: credentials.password,
+      };
+
+      if (captchaVerification.token) {
+        loginPayload.captchaToken = captchaVerification.token;
+      } else {
+        loginPayload.captchaSessionId = credentials.captchaSessionId;
+      }
+
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(loginPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Login failed: ${response.status}`
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Login with captcha error:", error);
+      throw error;
+    }
+  }
+
+  async loginWithPreVerifiedCaptcha(credentials: {
+    email: string;
+    password: string;
+    captchaToken: string;
+  }) {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Login failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
   async getRoles() {
     return this.makeRequestWithAuthRetry("/roles");
   }
@@ -115,7 +275,7 @@ class ServerApiService {
       sortOrder: filters.sortOrder || "DESC",
     };
 
-    const res = await this.makeRequestWithAuthRetry("/clients", {
+    const res = await this.makeRequestWithAuthRetry("/clients/all", {
       method: "POST",
       body: JSON.stringify(body),
     });
